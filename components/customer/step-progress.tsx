@@ -1,0 +1,53 @@
+"use client";
+
+import { motion } from "framer-motion";
+
+interface StepProgressProps {
+  currentStep: number;
+  steps: string[];
+}
+
+export function StepProgress({ currentStep, steps }: StepProgressProps) {
+  return (
+    <div className="flex items-center justify-between px-4 py-4">
+      {steps.map((label, i) => {
+        const stepNum = i + 1;
+        const isActive = stepNum <= currentStep;
+        const isCurrent = stepNum === currentStep;
+
+        return (
+          <div key={label} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center">
+              <motion.div
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                  isActive
+                    ? "bg-amber-400 text-white"
+                    : "bg-gray-200 text-gray-500"
+                }`}
+                initial={false}
+                animate={isCurrent ? { scale: [1, 1.1, 1] } : {}}
+                transition={{ duration: 0.3 }}
+              >
+                {stepNum}
+              </motion.div>
+              <span
+                className={`text-xs mt-1.5 whitespace-nowrap ${
+                  isActive ? "text-gray-900 font-medium" : "text-gray-400"
+                }`}
+              >
+                {label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div
+                className={`flex-1 h-0.5 mx-2 mt-[-1rem] ${
+                  stepNum < currentStep ? "bg-amber-400" : "bg-gray-200"
+                }`}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
