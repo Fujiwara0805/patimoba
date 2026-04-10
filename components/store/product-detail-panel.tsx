@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import type { ManagedProduct } from "@/lib/product-management-data";
-import { cakeCategories } from "@/lib/product-management-data";
+import type { ManagedProduct } from "@/lib/types";
+
+const cakeCategories = ["生菓子", "焼き菓子", "ホール", "期間限定", "ドリンク", "その他"];
 
 interface ProductDetailPanelProps {
   product: ManagedProduct;

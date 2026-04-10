@@ -1,4 +1,7 @@
+"use client"
+
 import { StoreSidebar } from "@/components/store/sidebar";
+import { StoreProvider } from "@/lib/store-context";
 
 export default function StoreLayout({
   children,
@@ -6,9 +9,11 @@ export default function StoreLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-white">
-      <StoreSidebar />
-      <main className="flex-1 overflow-auto">{children}</main>
-    </div>
+    <StoreProvider>
+      <div className="flex min-h-screen bg-white">
+        <StoreSidebar />
+        <main className="flex-1 overflow-auto">{children}</main>
+      </div>
+    </StoreProvider>
   );
 }

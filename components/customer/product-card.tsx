@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import type { Product } from "@/lib/mock-data";
+import type { Product } from "@/lib/types";
 
 interface ProductCardProps {
   product: Product;

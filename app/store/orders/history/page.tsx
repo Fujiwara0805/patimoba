@@ -3,17 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Check } from "lucide-react";
-import { mockOrders } from "@/lib/mock-data";
-import type { Order } from "@/lib/mock-data";
+import { useOrders } from "@/hooks/use-orders";
+import { useProductTypes } from "@/hooks/use-product-types";
+import { useStoreContext } from "@/lib/store-context";
+import type { Order } from "@/lib/types";
 import { OrderDetailModal } from "@/components/store/order-detail-modal";
 import { DatePickerPopup } from "@/components/store/date-picker-popup";
-
-const productTypes = [
-  "商品タイプを選択",
-  "ケーキ登録",
-  "EC",
-  "カスタム",
-];
 
 const daysOfWeek = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -26,14 +21,23 @@ function formatDate(date: Date) {
 }
 
 export default function StoreOrderHistoryPage() {
-  const [productType, setProductType] = useState(productTypes[0]);
+  const { storeId } = useStoreContext();
+  const { orders, loading: ordersLoading } = useOrders({ storeId });
+  const { categories, loading: typesLoading } = useProductTypes();
+
+  const [productType, setProductType] = useState("すべて");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => {
-    return new Set(mockOrders.filter((o) => o.isPrepared).map((o) => o.id));
-  });
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const dateRef = useRef<HTMLDivElement>(null);
+
+  // Initialize checked IDs from prepared orders once loaded
+  useEffect(() => {
+    if (!ordersLoading && orders.length > 0) {
+      setCheckedIds(new Set(orders.filter((o) => o.isPrepared).map((o) => o.id)));
+    }
+  }, [orders, ordersLoading]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -54,6 +58,14 @@ export default function StoreOrderHistoryPage() {
     });
   };
 
+  if (ordersLoading || typesLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <p className="text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-end gap-4 mb-6">
@@ -62,7 +74,7 @@ export default function StoreOrderHistoryPage() {
           onChange={(e) => setProductType(e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-[200px]"
         >
-          {productTypes.map((t) => (
+          {categories.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
@@ -103,13 +115,13 @@ export default function StoreOrderHistoryPage() {
           <span className="text-center">準備</span>
         </div>
 
-        {mockOrders.length === 0 && (
+        {orders.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-gray-400">
             注文履歴はありません
           </div>
         )}
 
-        {mockOrders.map((order, i) => {
+        {orders.map((order, i) => {
           const isChecked = checkedIds.has(order.id);
           const isDelivery = !!order.address;
 

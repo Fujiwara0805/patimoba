@@ -2,9 +2,22 @@
 
 import { motion } from "framer-motion";
 import { Heart, User } from "lucide-react";
-import { mockCustomers } from "@/lib/mock-data";
+import { useCustomers } from "@/hooks/use-customers";
+import { useStoreContext } from "@/lib/store-context";
+import type { Customer } from "@/lib/types";
 
 export default function StoreCustomersPage() {
+  const { storeId } = useStoreContext();
+  const { customers, loading } = useCustomers({ storeId });
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <p className="text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <div className="flex items-center gap-3 mb-6 bg-[#FFF9C4] rounded-xl p-4">
@@ -13,7 +26,7 @@ export default function StoreCustomersPage() {
         </div>
         <div>
           <p className="text-sm text-gray-500">お気に入り合計数</p>
-          <p className="text-2xl font-bold">{mockCustomers.length}人</p>
+          <p className="text-2xl font-bold">{customers.length}人</p>
         </div>
       </div>
 
@@ -26,7 +39,7 @@ export default function StoreCustomersPage() {
           <span>最終来店日</span>
         </div>
 
-        {mockCustomers.map((customer, i) => (
+        {customers.map((customer, i) => (
           <motion.div
             key={customer.id}
             initial={{ opacity: 0 }}

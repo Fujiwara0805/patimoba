@@ -6,48 +6,35 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CustomerHeader } from "@/components/customer/customer-header";
 import { StepProgress } from "@/components/customer/step-progress";
 import { OrderTypeModal } from "@/components/customer/order-type-modal";
-import { mockStores } from "@/lib/mock-data";
+import { useStores } from "@/hooks/use-stores";
+import { useCustomerContext } from "@/lib/customer-context";
+import { Store } from "@/lib/types";
 import { MapPin, Heart } from "lucide-react";
 
 const steps = ["店舗選択", "商品選択", "受取日時", "注文確認"];
 
 const tabs = ["店舗一覧", "お気に入り", "履歴"] as const;
 
-const favoriteStores = [
-  {
-    id: "1",
-    name: "Patisserie KANATA",
-    logo: "https://images.pexels.com/photos/1998920/pexels-photo-1998920.jpeg?auto=compress&cs=tinysrgb&w=80",
-  },
-];
+const favoriteStores: { id: string; name: string; logo: string }[] = [];
 
-const historyStores = [
-  {
-    id: "1",
-    name: "Patisserie KANATA",
-    logo: "https://images.pexels.com/photos/1998920/pexels-photo-1998920.jpeg?auto=compress&cs=tinysrgb&w=80",
-    lastOrder: "2026/03/28",
-  },
-  {
-    id: "2",
-    name: "Patisserie Lumiere",
-    logo: "https://images.pexels.com/photos/2067396/pexels-photo-2067396.jpeg?auto=compress&cs=tinysrgb&w=80",
-    lastOrder: "2026/02/14",
-  },
-];
+const historyStores: { id: string; name: string; logo: string; lastOrder: string }[] = [];
 
 export default function TakeoutStorePage() {
   const router = useRouter();
+  const { setSelectedStoreId, setSelectedStoreName } = useCustomerContext();
+  const { stores, loading } = useStores();
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("店舗一覧");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStore, setSelectedStore] = useState<{ id: string; name: string } | null>(null);
 
-  const filteredStores = mockStores.filter((s) =>
+  const filteredStores = stores.filter((s) =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleStoreClick = (storeId: string, storeName: string) => {
     setSelectedStore({ id: storeId, name: storeName });
+    setSelectedStoreId(Number(storeId));
+    setSelectedStoreName(storeName);
   };
 
   const handleReservation = () => {
@@ -55,6 +42,14 @@ export default function TakeoutStorePage() {
       router.push(`/customer/takeout/products?store=${selectedStore.id}`);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">

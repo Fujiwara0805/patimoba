@@ -13,15 +13,22 @@ import {
   X,
   Bluetooth,
 } from "lucide-react";
-import { mockOrders } from "@/lib/mock-data";
+import { useOrders } from "@/hooks/use-orders";
+import { useDashboardStats } from "@/hooks/use-dashboard-stats";
+import { useStoreContext } from "@/lib/store-context";
 import { OrderDetailModal } from "@/components/store/order-detail-modal";
 import { DatePickerPopup } from "@/components/store/date-picker-popup";
-import type { Order } from "@/lib/mock-data";
+import { useOrderMutations } from "@/hooks/use-order-mutations";
+import type { Order } from "@/lib/types";
 
 const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
 
 export default function StoreDashboardPage() {
-  const [orders, setOrders] = useState(mockOrders);
+  const { storeId } = useStoreContext();
+  const { orders, loading: ordersLoading, refetch: refetchOrders } = useOrders({ storeId });
+  const { stats, loading: statsLoading } = useDashboardStats(storeId);
+  const { updateOrderStatus } = useOrderMutations();
+
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
@@ -29,25 +36,15 @@ export default function StoreDashboardPage() {
 
   const dateStr = `${selectedDate.getFullYear()}年${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日(${dayNames[selectedDate.getDay()]})`;
 
-  const todaySales = orders
-    .filter((o) => o.isPrepared)
-    .reduce((sum, o) => sum + o.total, 0);
-  const todayOrders = orders.length;
-  const monthlySales = 84260;
-
-  const togglePrepared = (id: string) => {
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (o.id === id) {
-          const updated = { ...o, isPrepared: !o.isPrepared };
-          if (!o.isPrepared) {
-            setModalOrder(updated);
-          }
-          return updated;
-        }
-        return o;
-      })
-    );
+  const togglePrepared = async (id: string) => {
+    const order = orders.find((o) => o.id === id);
+    if (!order) return;
+    const newPrepared = !order.isPrepared;
+    await updateOrderStatus(Number(id), newPrepared);
+    if (newPrepared) {
+      setModalOrder({ ...order, isPrepared: newPrepared });
+    }
+    refetchOrders();
   };
 
   useEffect(() => {
@@ -59,6 +56,14 @@ export default function StoreDashboardPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  if (ordersLoading || statsLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <p className="text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -97,7 +102,7 @@ export default function StoreDashboardPage() {
             本日の売上速報
           </div>
           <p className="text-2xl font-bold">
-            &yen;{todaySales.toLocaleString()}
+            &yen;{stats.todaySales.toLocaleString()}
           </p>
         </motion.div>
 
@@ -111,7 +116,7 @@ export default function StoreDashboardPage() {
             <Users className="w-4 h-4 text-amber-500" />
             今日の注文件数
           </div>
-          <p className="text-2xl font-bold">{todayOrders}件</p>
+          <p className="text-2xl font-bold">{stats.todayOrders}件</p>
         </motion.div>
 
         <motion.div
@@ -125,7 +130,7 @@ export default function StoreDashboardPage() {
             今月の総売上
           </div>
           <p className="text-2xl font-bold">
-            &yen;{monthlySales.toLocaleString()}
+            &yen;{stats.monthlySales.toLocaleString()}
           </p>
         </motion.div>
       </div>

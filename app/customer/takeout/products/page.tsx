@@ -7,18 +7,34 @@ import Link from "next/link";
 import { CustomerHeader } from "@/components/customer/customer-header";
 import { StepProgress } from "@/components/customer/step-progress";
 import { ProductCard } from "@/components/customer/product-card";
-import { mockProducts, productCategories } from "@/lib/mock-data";
+import { useProducts } from "@/hooks/use-products";
+import { useProductTypes } from "@/hooks/use-product-types";
+import { useCustomerContext } from "@/lib/customer-context";
+import { Product } from "@/lib/types";
 
 const steps = ["店舗選択", "商品選択", "受取日時", "注文確認"];
 
 export default function TakeoutProductsPage() {
+  const { selectedStoreId } = useCustomerContext();
+  const { products, loading: productsLoading } = useProducts({ storeId: selectedStoreId ?? undefined });
+  const { categories, loading: categoriesLoading } = useProductTypes();
   const [selectedCategory, setSelectedCategory] = useState("すべて");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  const loading = productsLoading || categoriesLoading;
+
   const filtered =
     selectedCategory === "すべて"
-      ? mockProducts
-      : mockProducts.filter((p) => p.category === selectedCategory);
+      ? products
+      : products.filter((p) => p.category === selectedCategory);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -60,7 +76,7 @@ export default function TakeoutProductsPage() {
                   transition={{ duration: 0.15 }}
                   className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50"
                 >
-                  {productCategories.map((cat) => (
+                  {categories.map((cat) => (
                     <button
                       key={cat}
                       onClick={() => {

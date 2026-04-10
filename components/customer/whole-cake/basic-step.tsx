@@ -2,8 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ChartCandlestick as CandlestickChart, X } from "lucide-react";
-import { mockCandleOptions } from "@/lib/mock-data";
-import type { WholeCakeProduct } from "@/lib/mock-data";
+import type { WholeCakeProduct, CandleOption } from "@/lib/types";
 
 export interface CandleEntry {
   id: string;
@@ -13,6 +12,7 @@ export interface CandleEntry {
 
 interface BasicStepProps {
   cake: WholeCakeProduct;
+  candleOptions: CandleOption[];
   selectedSizeId: string;
   onSizeChange: (id: string) => void;
   candles: CandleEntry[];
@@ -26,6 +26,7 @@ interface BasicStepProps {
 
 export function WholeCakeBasicStep({
   cake,
+  candleOptions,
   selectedSizeId,
   onSizeChange,
   candles,
@@ -107,7 +108,7 @@ export function WholeCakeBasicStep({
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
                 >
                   <option value="">種類を選択</option>
-                  {mockCandleOptions.map((opt) => (
+                  {candleOptions.map((opt) => (
                     <option key={opt.id} value={opt.id}>
                       {opt.name} &yen;{opt.price.toLocaleString()}
                     </option>

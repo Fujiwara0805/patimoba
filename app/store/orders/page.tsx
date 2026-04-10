@@ -3,17 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Check } from "lucide-react";
-import { mockOrders } from "@/lib/mock-data";
-import type { Order } from "@/lib/mock-data";
+import { useOrders } from "@/hooks/use-orders";
+import { useProductTypes } from "@/hooks/use-product-types";
+import { useStoreContext } from "@/lib/store-context";
+import { useOrderMutations } from "@/hooks/use-order-mutations";
+import type { Order } from "@/lib/types";
 import { OrderDetailModal } from "@/components/store/order-detail-modal";
 import { DatePickerPopup } from "@/components/store/date-picker-popup";
-
-const productTypes = [
-  "商品タイプを選択",
-  "ケーキ登録",
-  "EC",
-  "カスタム",
-];
 
 const daysOfWeek = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -26,14 +22,17 @@ function formatDate(date: Date) {
 }
 
 export default function StoreOrdersPage() {
-  const [productType, setProductType] = useState(productTypes[0]);
+  const { storeId } = useStoreContext();
+  const { orders, loading: ordersLoading, refetch: refetchOrders } = useOrders({ storeId, unpreparedOnly: true });
+  const { categories, loading: typesLoading } = useProductTypes();
+  const { updateOrderStatus } = useOrderMutations();
+
+  const [productType, setProductType] = useState("すべて");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const dateRef = useRef<HTMLDivElement>(null);
-
-  const unpreparedOrders = mockOrders.filter((o) => !o.isPrepared);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -45,14 +44,26 @@ export default function StoreOrdersPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const toggleCheck = (id: string) => {
+  const toggleCheck = async (id: string) => {
+    const order = orders.find((o) => o.id === id);
+    if (!order) return;
+    await updateOrderStatus(Number(id), !order.isPrepared);
     setCheckedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+    refetchOrders();
   };
+
+  if (ordersLoading || typesLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <p className="text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -62,7 +73,7 @@ export default function StoreOrdersPage() {
           onChange={(e) => setProductType(e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-[200px]"
         >
-          {productTypes.map((t) => (
+          {categories.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
@@ -102,13 +113,13 @@ export default function StoreOrdersPage() {
           <span>合計金額</span>
         </div>
 
-        {unpreparedOrders.length === 0 && (
+        {orders.length === 0 && (
           <div className="px-4 py-8 text-center text-sm text-gray-400">
             未準備の注文はありません
           </div>
         )}
 
-        {unpreparedOrders.map((order, i) => {
+        {orders.map((order, i) => {
           const isChecked = checkedIds.has(order.id);
           const isDelivery = !!order.address;
 

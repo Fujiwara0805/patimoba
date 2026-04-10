@@ -1,12 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { mockCandleOptions } from "@/lib/mock-data";
-import type { WholeCakeProduct, WholeCakeSize } from "@/lib/mock-data";
+import type { WholeCakeProduct, WholeCakeSize, CandleOption } from "@/lib/types";
 import type { CandleEntry } from "./basic-step";
 
 interface ConfirmStepProps {
   cake: WholeCakeProduct;
+  candleOptions: CandleOption[];
   selectedSize: WholeCakeSize;
   candles: CandleEntry[];
   messageText: string;
@@ -20,6 +20,7 @@ interface ConfirmStepProps {
 
 export function WholeCakeConfirmStep({
   cake,
+  candleOptions,
   selectedSize,
   candles,
   messageText,
@@ -69,7 +70,7 @@ export function WholeCakeConfirmStep({
             <div>
               <span className="text-sm font-bold">ろうそく：</span>
               {validCandles.map((c) => {
-                const opt = mockCandleOptions.find(
+                const opt = candleOptions.find(
                   (o) => o.id === c.candleOptionId
                 );
                 if (!opt) return null;

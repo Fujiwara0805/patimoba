@@ -10,27 +10,41 @@ import { WholeCakeBasicStep } from "@/components/customer/whole-cake/basic-step"
 import { WholeCakeOptionsStep } from "@/components/customer/whole-cake/options-step";
 import { WholeCakeConfirmStep } from "@/components/customer/whole-cake/confirm-step";
 import type { CandleEntry } from "@/components/customer/whole-cake/basic-step";
-import { mockWholeCakes, mockCandleOptions } from "@/lib/mock-data";
+import { useWholeCakes } from "@/hooks/use-whole-cakes";
 
 const wholeCakeSteps = ["基本選択", "オプション", "内容確認"];
 
 export default function WholeCakePage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const { wholeCakes, candleOptions, loading } = useWholeCakes(1);
 
-  const [selectedCakeId] = useState(mockWholeCakes[0].id);
+  const [selectedCakeId, setSelectedCakeId] = useState("");
   const [selectedSizeId, setSelectedSizeId] = useState("");
   const [candles, setCandles] = useState<CandleEntry[]>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [allergyNote, setAllergyNote] = useState("");
 
-  const selectedCake = mockWholeCakes.find((c) => c.id === selectedCakeId)!;
+  // Set default cake once loaded
+  if (!selectedCakeId && wholeCakes.length > 0) {
+    setSelectedCakeId(wholeCakes[0].id);
+  }
+
+  if (loading) {
+    return <div className="min-h-screen bg-white flex items-center justify-center text-gray-500">読み込み中...</div>;
+  }
+
+  const selectedCake = wholeCakes.find((c) => c.id === selectedCakeId);
+  if (!selectedCake) {
+    return <div className="min-h-screen bg-white flex items-center justify-center text-gray-500">ホールケーキが見つかりません</div>;
+  }
+
   const selectedSize = selectedCake.sizes.find((s) => s.id === selectedSizeId);
   const sizePrice = selectedSize?.price ?? 0;
 
   const candleTotal = candles.reduce((sum, c) => {
-    const opt = mockCandleOptions.find((o) => o.id === c.candleOptionId);
+    const opt = candleOptions.find((o) => o.id === c.candleOptionId);
     const qty = Number(c.quantity) || 0;
     return sum + (opt?.price ?? 0) * qty;
   }, 0);
@@ -69,6 +83,7 @@ export default function WholeCakePage() {
       {step === 1 && (
         <WholeCakeBasicStep
           cake={selectedCake}
+          candleOptions={candleOptions}
           selectedSizeId={selectedSizeId}
           onSizeChange={setSelectedSizeId}
           candles={candles}
@@ -94,6 +109,7 @@ export default function WholeCakePage() {
       {step === 3 && selectedSize && (
         <WholeCakeConfirmStep
           cake={selectedCake}
+          candleOptions={candleOptions}
           selectedSize={selectedSize}
           candles={candles}
           messageText={messageText}

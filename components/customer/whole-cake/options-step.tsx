@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { WholeCakeProduct } from "@/lib/mock-data";
+import type { WholeCakeProduct } from "@/lib/types";
 
 interface OptionsStepProps {
   cake: WholeCakeProduct;

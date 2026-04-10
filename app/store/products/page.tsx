@@ -3,17 +3,22 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search } from "lucide-react";
-import { managedProducts } from "@/lib/product-management-data";
-import type { ManagedProduct } from "@/lib/product-management-data";
+import { useProducts } from "@/hooks/use-products";
+import { useProductMutations } from "@/hooks/use-product-mutations";
+import { useStoreContext } from "@/lib/store-context";
+import type { ManagedProduct } from "@/lib/types";
 import { ToggleSwitch } from "@/components/store/toggle-switch";
 import { ProductDetailPanel } from "@/components/store/product-detail-panel";
 
 type Tab = "takeout" | "ec";
 
 export default function StoreProductsPage() {
+  const { storeId } = useStoreContext();
+  const { managedProducts, loading, refetch } = useProducts({ storeId });
+  const { toggleAcceptOrders, toggleTodayAvailable } = useProductMutations();
+
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("takeout");
-  const [products, setProducts] = useState<ManagedProduct[]>(managedProducts);
   const [selectedProduct, setSelectedProduct] = useState<ManagedProduct | null>(null);
   const [dailyOrderMax, setDailyOrderMax] = useState(30);
   const [perOrderMax, setPerOrderMax] = useState(10);
@@ -30,31 +35,39 @@ export default function StoreProductsPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filtered = products.filter((p) => {
+  const filtered = managedProducts.filter((p) => {
     if (!search) return true;
     return p.name.includes(search);
   });
 
-  const toggleAccept = (id: string) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, acceptOrders: !p.acceptOrders } : p))
-    );
+  const toggleAccept = async (id: string) => {
+    const product = managedProducts.find((p) => p.id === id);
+    if (!product) return;
+    await toggleAcceptOrders(Number(id), !product.acceptOrders);
+    refetch();
   };
 
-  const toggleToday = (id: string) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, todayAvailable: !p.todayAvailable } : p))
-    );
+  const toggleToday = async (id: string) => {
+    const product = managedProducts.find((p) => p.id === id);
+    if (!product) return;
+    await toggleTodayAvailable(Number(id), !product.todayAvailable);
+    refetch();
   };
 
   const handleProductSave = (updated: ManagedProduct) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === updated.id ? updated : p))
-    );
     setSelectedProduct(updated);
+    refetch();
   };
 
   const showDescription = tab === "ec";
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <p className="text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">

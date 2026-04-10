@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { X, Bluetooth, ClipboardList } from "lucide-react";
-import type { Order } from "@/lib/mock-data";
+import type { Order } from "@/lib/types";
 
 interface OrderDetailModalProps {
   order: Order;

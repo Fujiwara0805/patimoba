@@ -9,20 +9,29 @@ import { CustomerHeader } from "@/components/customer/customer-header";
 import { StepProgress } from "@/components/customer/step-progress";
 import { CartModal } from "@/components/customer/cart-modal";
 import type { CartItem } from "@/components/customer/cart-modal";
-import { mockProducts } from "@/lib/mock-data";
+import { useProduct } from "@/hooks/use-products";
+import { Product } from "@/lib/types";
 
 const ecSteps = ["店舗選択", "商品選択", "配送先", "注文確認"];
 
 export default function ECProductDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { product, loading } = useProduct(params.id as string);
   const [quantity, setQuantity] = useState(1);
   const [showQuantityDropdown, setShowQuantityDropdown] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [showCart, setShowCart] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  const product = mockProducts.find((p) => p.id === params.id);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
+
   if (!product) return null;
 
   const handleAddToCart = () => {
