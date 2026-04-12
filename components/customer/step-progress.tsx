@@ -5,19 +5,26 @@ import { motion } from "framer-motion";
 interface StepProgressProps {
   currentStep: number;
   steps: string[];
+  onStepClick?: (step: number) => void;
 }
 
-export function StepProgress({ currentStep, steps }: StepProgressProps) {
+export function StepProgress({ currentStep, steps, onStepClick }: StepProgressProps) {
   return (
     <div className="flex items-center justify-between px-4 py-4">
       {steps.map((label, i) => {
         const stepNum = i + 1;
         const isActive = stepNum <= currentStep;
         const isCurrent = stepNum === currentStep;
+        const isClickable = onStepClick && stepNum < currentStep;
 
         return (
           <div key={label} className="flex items-center flex-1 last:flex-none">
-            <div className="flex flex-col items-center">
+            <button
+              type="button"
+              disabled={!isClickable}
+              onClick={() => isClickable && onStepClick(stepNum)}
+              className={`flex flex-col items-center ${isClickable ? "cursor-pointer" : "cursor-default"}`}
+            >
               <motion.div
                 className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
                   isActive
@@ -37,7 +44,7 @@ export function StepProgress({ currentStep, steps }: StepProgressProps) {
               >
                 {label}
               </span>
-            </div>
+            </button>
             {i < steps.length - 1 && (
               <div
                 className={`flex-1 h-0.5 mx-2 mt-[-1rem] ${

@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ArrowLeft,
   Loader2,
+  MessageCircle,
 } from "lucide-react";
 import { useAuth, type UserType } from "@/lib/auth-context";
 
@@ -134,6 +135,10 @@ export default function LoginPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.08 }}
                     onClick={() => {
+                      if (role.id === "customer") {
+                        router.push("/customer/login");
+                        return;
+                      }
                       setSelectedRole(role.id);
                       setError("");
                     }}
@@ -152,7 +157,14 @@ export default function LoginPage() {
                         {role.description}
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                    {role.id === "customer" ? (
+                      <span className="flex items-center gap-1 text-xs text-[#06C755] font-medium">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        LINE
+                      </span>
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    )}
                   </motion.button>
                 ))}
               </div>

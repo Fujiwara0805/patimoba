@@ -321,7 +321,7 @@ export default function StoreProductsPage() {
                     )}
                   </div>
                   <span className="text-xs text-gray-500 line-clamp-2 pr-2">
-                    {product.descriprion || product.description}
+                    {product.description}
                   </span>
                   <span className="text-xs text-gray-500 truncate pr-2">
                     {product.ingredients || ""}
@@ -377,7 +377,7 @@ export default function StoreProductsPage() {
                     )}
                   </div>
                   <span className="text-xs text-gray-500 line-clamp-2 pr-2">
-                    {product.descriprion || product.description}
+                    {product.description}
                   </span>
                   <span className="text-sm">
                     {product.price > 0

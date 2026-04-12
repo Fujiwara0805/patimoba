@@ -119,6 +119,9 @@ export default function StoreAccountPage() {
 
         if (store.open_time) setOpenTime(store.open_time);
         if (store.close_time) setCloseTime(store.close_time);
+        if (store.same_day_cutoff_minutes != null) {
+          setCutoffHours(String(Math.round(store.same_day_cutoff_minutes / 60)));
+        }
 
         const rules = await fetchClosedDayRules(store.id);
         const names = ["日", "月", "火", "水", "木", "金", "土"];
@@ -172,11 +175,21 @@ export default function StoreAccountPage() {
     }
   }, [modalOpenTime, modalCloseTime, storeId]);
 
-  const saveCutoff = useCallback(() => {
-    setCutoffHours(modalCutoff);
-    setModal("saved");
-    setTimeout(() => setModal(null), 1500);
-  }, [modalCutoff]);
+  const saveCutoff = useCallback(async () => {
+    if (!storeId) return;
+    setSaving(true);
+    try {
+      await supabase
+        .from("stores")
+        .update({ same_day_cutoff_minutes: Number(modalCutoff) * 60 })
+        .eq("id", storeId);
+      setCutoffHours(modalCutoff);
+      setModal("saved");
+      setTimeout(() => setModal(null), 1500);
+    } finally {
+      setSaving(false);
+    }
+  }, [modalCutoff, storeId]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

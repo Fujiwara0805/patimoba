@@ -22,8 +22,8 @@ export function useProducts(options: UseProductsOptions = {}) {
     setError(null)
 
     let query = supabase
-      .from("products")
-      .select("*, product_categories(name)")
+      .from("product_registrations")
+      .select("*, product_types(product_type)")
 
     if (options.storeId) {
       query = query.eq("store_id", options.storeId)
@@ -37,19 +37,19 @@ export function useProducts(options: UseProductsOptions = {}) {
 
     const { data, error: err } = await query
       .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true })
+      .order("created_date", { ascending: true })
     if (err) {
       setError(err.message)
     } else {
       const rows = data || []
       setProducts(
         rows.map((row: any) =>
-          toUIProduct(row, row.product_categories?.name || row.category)
+          toUIProduct(row, row.product_types?.product_type)
         )
       )
       setManagedProducts(
         rows.map((row: any) =>
-          toUIManagedProduct(row, row.product_categories?.name || row.category)
+          toUIManagedProduct(row, row.product_types?.product_type)
         )
       )
     }
@@ -72,14 +72,14 @@ export function useProduct(id: string) {
     const fetch = async () => {
       setLoading(true)
       const { data, error: err } = await supabase
-        .from("products")
-        .select("*, product_categories(name)")
+        .from("product_registrations")
+        .select("*, product_types(product_type)")
         .eq("id", id)
         .single()
       if (err) {
         setError(err.message)
       } else if (data) {
-        setProduct(toUIProduct(data, (data as any).product_categories?.name || (data as any).category))
+        setProduct(toUIProduct(data, (data as any).product_types?.product_type))
       }
       setLoading(false)
     }

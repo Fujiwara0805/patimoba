@@ -12,9 +12,8 @@ import { uploadProductImage, deleteProductImage } from "@/lib/upload-image";
 type OrderType = "always" | "sameDay" | "manual" | "reserveOnly" | "todayOnly";
 
 interface ProductRow {
-  id: number;
+  id: string;
   name: string | null;
-  descriprion: string | null;
   description: string | null;
   price: number | null;
   image: string | null;
@@ -58,7 +57,7 @@ export function CakeTab() {
   const { categories: productCategories } = useProductCategories(storeId ?? undefined);
 
   const [products, setProducts] = useState<ProductRow[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [category, setCategory] = useState("");
@@ -157,7 +156,7 @@ export function CakeTab() {
   }, []);
 
   const selectProduct = useCallback(
-    (id: number) => {
+    (id: string) => {
       const p = products.find((r) => r.id === id);
       if (!p) return;
       setSelectedId(p.id);
@@ -166,7 +165,7 @@ export function CakeTab() {
       );
       setCategory(typeMatch?.productType ?? "");
       setProductName(p.name ?? "");
-      setDescription(p.descriprion ?? p.description ?? "");
+      setDescription(p.description ?? "");
       setPrice(p.price != null ? `¥${p.price.toLocaleString()}` : "");
       setOrderType(resolveOrderType(p));
       setReserveDays(String(p.preparation_days ?? 10));
@@ -240,7 +239,7 @@ export function CakeTab() {
       const payload: any = {
         store_id: storeId,
         name: productName.trim(),
-        descriprion: description.trim(),
+        description: description.trim(),
         price: parsePriceValue(price),
         product_type_id: typeMatch?.id ?? null,
         image: mainImage ?? null,
@@ -254,7 +253,7 @@ export function CakeTab() {
         order_end_date: null,
       };
 
-      let productRegId: number | null = selectedId;
+      let productRegId: string | null = selectedId;
 
       if (selectedId) {
         const { error: err } = await supabase
@@ -364,7 +363,7 @@ export function CakeTab() {
             if (v === "") {
               clearForm();
             } else {
-              selectProduct(Number(v));
+              selectProduct(v);
             }
           }}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-[220px]"

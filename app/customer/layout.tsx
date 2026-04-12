@@ -9,8 +9,10 @@ export default function CustomerLayout({
 }) {
   return (
     <CustomerProvider>
-      <div className="min-h-screen bg-white max-w-[430px] mx-auto shadow-lg relative">
-        {children}
+      <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-white w-full max-w-[430px] mx-auto sm:shadow-lg relative">
+          {children}
+        </div>
       </div>
     </CustomerProvider>
   );

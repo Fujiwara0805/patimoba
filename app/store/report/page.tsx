@@ -21,10 +21,10 @@ import { useStoreContext } from "@/lib/store-context";
 
 interface OrderRow {
   id: string;
-  total_amount: number;
+  total: number | null;
   created_at: string;
   customer_id: string | null;
-  is_takeout: boolean;
+  order_type: string;
 }
 
 interface ProductSale {
@@ -68,14 +68,14 @@ export default function StoreReportPage() {
     (async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, total_amount, created_at, customer_id, is_takeout")
+        .select("id, total, created_at, customer_id, order_type")
         .eq("store_id", storeId)
         .gte("created_at", start)
         .lt("created_at", end)
         .order("created_at", { ascending: true });
 
       if (!error && data) {
-        setOrders(data as OrderRow[]);
+        setOrders(data as unknown as OrderRow[]);
       }
       setLoading(false);
     })();
@@ -83,7 +83,7 @@ export default function StoreReportPage() {
 
   const stats = useMemo(() => {
     const totalOrders = orders.length;
-    const totalRevenue = orders.reduce((s, o) => s + (o.total_amount || 0), 0);
+    const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0);
     const avgSpend = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
     const uniqueCustomers = new Set(orders.filter((o) => o.customer_id).map((o) => o.customer_id));
     return { totalOrders, totalRevenue, avgSpend, newCustomers: uniqueCustomers.size };
@@ -94,7 +94,7 @@ export default function StoreReportPage() {
     const map = new Map<number, number>();
     for (const o of orders) {
       const d = new Date(o.created_at).getDate();
-      map.set(d, (map.get(d) || 0) + (o.total_amount || 0));
+      map.set(d, (map.get(d) || 0) + (o.total || 0));
     }
     return Array.from({ length: daysInMonth }, (_, i) => ({
       day: i + 1,

@@ -1,26 +1,211 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, CalendarDays } from "lucide-react";
+import { Clock, CalendarDays, X } from "lucide-react";
+import type { Store } from "@/lib/types";
 
 interface OrderTypeModalProps {
   open: boolean;
-  storeName: string;
+  store: Store | null;
   onClose: () => void;
   onSelectSameDay: () => void;
   onSelectReservation: () => void;
 }
 
+function formatTime(time: string | null) {
+  if (!time) return "";
+  return time.slice(0, 5);
+}
+
+function toMin(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+
+interface SameDayStatus {
+  available: boolean;
+  reason: "ok" | "closed_today" | "outside_hours" | "no_schedule";
+  acceptStart: string | null;
+  acceptEnd: string | null;
+}
+
+function useSameDayAvailability(store: Store | null): SameDayStatus {
+  const [status, setStatus] = useState<SameDayStatus>({
+    available: false,
+    reason: "no_schedule",
+    acceptStart: null,
+    acceptEnd: null,
+  });
+
+  useEffect(() => {
+    if (!store) return;
+
+    const check = async () => {
+      const { supabase } = await import("@/lib/supabase");
+      const { isClosedByRule } = await import("@/components/store/business-days/types");
+
+      const now = new Date();
+      const fmtKey = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+      const todayKey = fmtKey(now);
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayKey = fmtKey(yesterday);
+
+      const { data: rules } = await supabase
+        .from("closed_day_rules")
+        .select("day_of_week, rule")
+        .eq("store_id", store.id);
+
+      const closedRules = (rules || []).map((r: any) => ({
+        dayOfWeek: r.day_of_week,
+        day: "",
+        rule: r.rule,
+      }));
+
+      // 深夜帯（open > close → 日またぎ営業）の場合、前日の営業が継続中かを先にチェック
+      const defaultOpen = store.openTime;
+      const defaultClose = store.closeTime;
+      const isOvernightStore =
+        defaultOpen && defaultClose &&
+        toMin(defaultOpen) > toMin(defaultClose);
+
+      if (isOvernightStore && now.getHours() < 12) {
+        const { data: yesterdaySchedule } = await supabase
+          .from("business_day_schedules")
+          .select("is_open, open_time, close_time")
+          .eq("store_id", store.id)
+          .eq("date", yesterdayKey)
+          .maybeSingle();
+
+        if (yesterdaySchedule) {
+          if (yesterdaySchedule.is_open) {
+            const ot = yesterdaySchedule.open_time || defaultOpen;
+            const ct = yesterdaySchedule.close_time || defaultClose;
+            checkTimeWindow(store, ot, ct, now, setStatus);
+            return;
+          }
+        } else {
+          const yy = yesterday.getFullYear();
+          const ym = yesterday.getMonth();
+          const yd = yesterday.getDate();
+          if (!isClosedByRule(closedRules, yy, ym, yd)) {
+            checkTimeWindow(store, defaultOpen, defaultClose, now, setStatus);
+            return;
+          }
+        }
+      }
+
+      // 通常の今日の判定
+      const { data: scheduleRow } = await supabase
+        .from("business_day_schedules")
+        .select("is_open, open_time, close_time")
+        .eq("store_id", store.id)
+        .eq("date", todayKey)
+        .maybeSingle();
+
+      if (scheduleRow) {
+        if (!scheduleRow.is_open) {
+          setStatus({ available: false, reason: "closed_today", acceptStart: null, acceptEnd: null });
+          return;
+        }
+        const openTime = scheduleRow.open_time || defaultOpen;
+        const closeTime = scheduleRow.close_time || defaultClose;
+        checkTimeWindow(store, openTime, closeTime, now, setStatus);
+        return;
+      }
+
+      const ty = now.getFullYear();
+      const tm = now.getMonth();
+      const td = now.getDate();
+      if (isClosedByRule(closedRules, ty, tm, td)) {
+        setStatus({ available: false, reason: "closed_today", acceptStart: null, acceptEnd: null });
+        return;
+      }
+
+      checkTimeWindow(store, defaultOpen, defaultClose, now, setStatus);
+    };
+
+    check();
+  }, [store?.id]);
+
+  return status;
+}
+
+function minutesToTimeStr(m: number): string {
+  const wrapped = ((m % 1440) + 1440) % 1440;
+  return `${String(Math.floor(wrapped / 60)).padStart(2, "0")}:${String(wrapped % 60).padStart(2, "0")}`;
+}
+
+function checkTimeWindow(
+  store: Store,
+  openTime: string | null,
+  closeTime: string | null,
+  now: Date,
+  setStatus: (s: SameDayStatus) => void
+) {
+  if (!openTime || !closeTime) {
+    setStatus({ available: false, reason: "no_schedule", acceptStart: null, acceptEnd: null });
+    return;
+  }
+
+  const [oh, om] = openTime.split(":").map(Number);
+  const [ch, cm] = closeTime.split(":").map(Number);
+  const cutoffMin = store.sameDayCutoffMinutes ?? 60;
+
+  let openMinutes = oh * 60 + om;
+  let closeMinutes = ch * 60 + cm;
+
+  // 日付をまたぐ営業（例: 23:00～04:30）の場合、closeを翌日として扱う
+  if (closeMinutes <= openMinutes) {
+    closeMinutes += 1440;
+  }
+
+  const acceptEndMinutes = closeMinutes - cutoffMin;
+  let nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // 現在時刻がopen前の早朝（日またぎの後半）なら+1440で比較
+  if (nowMinutes < openMinutes && nowMinutes < closeMinutes - 1440 + 1440) {
+    if (openMinutes > 720 && nowMinutes < 720) {
+      nowMinutes += 1440;
+    }
+  }
+
+  const acceptEndStr = minutesToTimeStr(acceptEndMinutes);
+  const acceptStartStr = formatTime(openTime);
+
+  if (nowMinutes >= openMinutes && nowMinutes <= acceptEndMinutes) {
+    setStatus({
+      available: true,
+      reason: "ok",
+      acceptStart: acceptStartStr,
+      acceptEnd: acceptEndStr,
+    });
+  } else {
+    setStatus({
+      available: false,
+      reason: "outside_hours",
+      acceptStart: acceptStartStr,
+      acceptEnd: acceptEndStr,
+    });
+  }
+}
+
 export function OrderTypeModal({
   open,
-  storeName,
+  store,
   onClose,
   onSelectSameDay,
   onSelectReservation,
 }: OrderTypeModalProps) {
+  const sameDayStatus = useSameDayAvailability(open ? store : null);
+  const sameDayOk = sameDayStatus.available;
+
   return (
     <AnimatePresence>
-      {open && (
+      {open && store && (
         <>
           <motion.div
             initial={{ opacity: 0 }}
@@ -30,46 +215,86 @@ export function OrderTypeModal({
             onClick={onClose}
           />
           <motion.div
-            initial={{ opacity: 0, y: 60 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 60 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed inset-x-4 top-[10%] bg-white rounded-2xl shadow-2xl z-[70] max-h-[80vh] overflow-y-auto"
+            initial={{ opacity: 0, y: 80, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 80, scale: 0.95 }}
+            transition={{ type: "spring", damping: 28, stiffness: 300 }}
+            className="fixed inset-x-3 top-[6%] bg-white rounded-2xl shadow-2xl z-[70] max-h-[88vh] overflow-y-auto"
           >
-            <div className="px-6 pt-8 pb-6">
-              <h2 className="text-xl font-bold text-gray-900 text-center">
+            <div className="px-5 pt-7 pb-6 relative">
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+
+              <h2 className="text-lg font-bold text-gray-900 text-center leading-snug">
                 ご注文方法を選択してください
               </h2>
-              <p className="text-sm text-gray-400 text-center mt-1">
+              <p className="text-xs text-gray-400 text-center mt-1.5">
                 シーンに合わせてお選びいただけます
               </p>
 
-              <div className="flex items-center justify-center gap-3 mt-6 mb-6">
-                <span className="text-xs text-gray-400 tracking-wider">Patisserie</span>
-                <span className="font-bold text-lg text-gray-900">{storeName}</span>
+              <div className="flex items-center justify-center gap-3 mt-5 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+                  {store.logoUrl || store.image ? (
+                    <img
+                      src={store.logoUrl || store.image}
+                      alt={store.name}
+                      className="w-full h-full object-contain p-0.5"
+                    />
+                  ) : (
+                    <span className="text-[8px] text-gray-400 font-medium leading-tight text-center">
+                      {store.name.slice(0, 4)}
+                    </span>
+                  )}
+                </div>
+                <span className="font-bold text-base text-gray-900">{store.name}</span>
               </div>
 
               <button
-                onClick={onSelectSameDay}
-                className="w-full border border-gray-200 rounded-xl p-5 mb-4 text-left hover:shadow-md transition-shadow bg-white relative overflow-hidden"
+                onClick={sameDayOk ? onSelectSameDay : undefined}
+                disabled={!sameDayOk}
+                className={`w-full border rounded-xl p-5 mb-3 text-left transition-shadow relative overflow-hidden ${
+                  sameDayOk
+                    ? "border-gray-200 hover:shadow-md bg-white"
+                    : "border-gray-200 bg-white cursor-default"
+                }`}
               >
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                    <Clock className="w-5 h-5 text-amber-500" />
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${sameDayOk ? "bg-amber-50" : "bg-gray-100"}`}>
+                    <Clock className={`w-[18px] h-[18px] ${sameDayOk ? "text-amber-500" : "text-gray-400"}`} />
                   </div>
-                  <span className="text-lg font-bold text-gray-400">当日受取注文</span>
+                  <span className={`text-base font-bold ${sameDayOk ? "text-gray-900" : "text-gray-400"}`}>
+                    当日受取注文
+                  </span>
                 </div>
-                <p className="text-sm text-gray-400 ml-[52px]">
+                <p className={`text-sm ml-12 leading-relaxed ${sameDayOk ? "text-gray-600" : "text-gray-400"}`}>
                   本日お店に並んでいる商品からご注文いただけます。
                 </p>
-                <div className="mt-3 ml-[52px] bg-[#FFF9C4] rounded-lg px-4 py-3">
-                  <p className="text-sm text-gray-700">
-                    ただいま当日注文は受け付けていません。
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    営業日の<span className="font-bold text-red-500">10:30~15:00</span>の間で受付しています。
-                  </p>
-                </div>
+                {!sameDayOk && (
+                  <div className="mt-3 ml-12 bg-[#FFF9C4] rounded-lg px-4 py-3">
+                    {sameDayStatus.reason === "closed_today" ? (
+                      <p className="text-sm text-gray-800 leading-relaxed">
+                        本日は定休日のため、当日注文は受け付けていません。
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-800 leading-relaxed">
+                        ただいま当日注文は受け付けていません。
+                      </p>
+                    )}
+                    {sameDayStatus.acceptStart && sameDayStatus.acceptEnd && (
+                      <p className="text-sm text-gray-800 leading-relaxed">
+                        営業日の
+                        <span className="font-bold text-red-500">
+                          {sameDayStatus.acceptStart}~{sameDayStatus.acceptEnd}
+                        </span>
+                        の間で受付しています。
+                      </p>
+                    )}
+                  </div>
+                )}
               </button>
 
               <button
@@ -77,18 +302,19 @@ export function OrderTypeModal({
                 className="w-full border border-gray-200 rounded-xl p-5 text-left hover:shadow-md transition-shadow bg-white"
               >
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                    <CalendarDays className="w-5 h-5 text-red-500" />
+                  <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
+                    <CalendarDays className="w-[18px] h-[18px] text-orange-500" />
                   </div>
-                  <span className="text-lg font-bold text-gray-900">予約注文</span>
+                  <span className="text-base font-bold text-gray-900">予約注文</span>
                 </div>
-                <p className="text-sm text-gray-600 ml-[52px]">
+                <p className="text-sm text-gray-600 ml-12 leading-relaxed">
                   24時間ご予約を受付しています。
                 </p>
-                <p className="text-sm text-gray-600 ml-[52px]">
+                <p className="text-sm text-gray-600 ml-12 leading-relaxed">
                   本日から2営業日後以降からご予約いただけます。
                 </p>
-                <div className="mt-3 ml-[52px]">
+
+                <div className="mt-3 ml-12 bg-red-50 rounded-lg px-4 py-2.5">
                   <p className="text-sm text-red-500 font-bold">
                     ホールケーキなどのご注文はこちら
                   </p>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { CustomerHeader } from "@/components/customer/customer-header";
@@ -7,72 +8,93 @@ import { StepProgress } from "@/components/customer/step-progress";
 import { useStores } from "@/hooks/use-stores";
 import { useCustomerContext } from "@/lib/customer-context";
 import { Store } from "@/lib/types";
-import { MapPin, Truck } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 
-const ecSteps = ["店舗選択", "商品選択", "配送先", "注文確認"];
+const ecSteps = ["店舗選択", "商品選択", "お届け先", "注文確認"];
 
 export default function ECStorePage() {
   const { stores, loading } = useStores({ ecOnly: true });
-  const { setSelectedStoreId, setSelectedStoreName } = useCustomerContext();
+  const { setSelectedStoreId, setSelectedStoreName, profile } = useCustomerContext();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredStores = stores.filter((s) =>
+    s.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleStoreClick = (store: Store) => {
     setSelectedStoreId(store.id);
     setSelectedStoreName(store.name);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-gray-500">読み込み中...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-white">
-      <CustomerHeader shopName="パティモバ EC" showCart />
+    <div className="min-h-screen bg-white flex flex-col">
+      <CustomerHeader
+        userName={profile?.lineName}
+        avatarUrl={profile?.avatar || undefined}
+        points={profile?.points}
+        showCart
+      />
       <StepProgress currentStep={1} steps={ecSteps} />
 
-      <div className="px-4 pb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <Truck className="w-5 h-5 text-amber-500" />
-          <h2 className="text-lg font-bold">配送可能な店舗</h2>
+      <div className="px-4 pb-8 flex-1">
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            placeholder="店舗名を検索"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+          />
+          <button className="bg-amber-400 hover:bg-amber-500 text-white font-bold px-5 rounded-lg text-sm transition-colors flex items-center gap-1">
+            <Search className="w-4 h-4" />
+            検索
+          </button>
         </div>
-        <div className="space-y-3">
-          {stores.map((store, i) => (
-            <motion.div
-              key={store.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-            >
-              <Link
-                href={`/customer/ec/products?store=${store.id}`}
-                onClick={() => handleStoreClick(store)}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-6 h-6 text-amber-400 animate-spin" />
+          </div>
+        ) : filteredStores.length === 0 ? (
+          <div className="text-center py-20 text-gray-400 text-sm">
+            店舗が見つかりませんでした
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredStores.map((store, i) => (
+              <motion.div
+                key={store.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06 }}
               >
-                <div className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="h-36 bg-gray-100">
-                    <img
-                      src={store.image}
-                      alt={store.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-bold text-gray-900">{store.name}</h3>
-                    <div className="flex items-center gap-1 mt-1 text-gray-500 text-sm">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span>{store.address}</span>
+                <Link
+                  href={`/customer/ec/products?store=${store.id}`}
+                  onClick={() => handleStoreClick(store)}
+                >
+                  <div className="border border-gray-200 rounded-xl p-4 flex items-center gap-4 hover:shadow-md transition-all duration-200 active:scale-[0.98]">
+                    <div className="w-14 h-14 rounded-lg bg-gray-50 border border-gray-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                      {store.logoUrl || store.image ? (
+                        <img
+                          src={store.logoUrl || store.image}
+                          alt={store.name}
+                          className="w-full h-full object-contain p-1"
+                        />
+                      ) : (
+                        <span className="text-[10px] text-gray-400 font-medium text-center leading-tight px-1">
+                          {store.name.slice(0, 4)}
+                        </span>
+                      )}
                     </div>
-                    <span className="inline-block mt-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
-                      配送対応
+                    <span className="flex-1 font-bold text-base text-gray-900 truncate">
+                      {store.name}
                     </span>
                   </div>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

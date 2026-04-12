@@ -3,22 +3,27 @@
 import Link from "next/link";
 import { User, ShoppingCart } from "lucide-react";
 import { motion } from "framer-motion";
+import { useCart } from "@/lib/cart-context";
 
 interface CustomerHeaderProps {
   shopName?: string;
+  userName?: string;
   avatarUrl?: string;
+  points?: number;
   showCart?: boolean;
-  cartCount?: number;
-  cartHref?: string;
+  onCartClick?: () => void;
 }
 
 export function CustomerHeader({
   shopName,
+  userName,
   avatarUrl,
-  showCart = false,
-  cartCount = 0,
-  cartHref = "/customer/ec/products",
+  points,
+  showCart = true,
+  onCartClick,
 }: CustomerHeaderProps) {
+  const { itemCount } = useCart();
+
   return (
     <motion.header
       initial={{ y: -10, opacity: 0 }}
@@ -26,15 +31,7 @@ export function CustomerHeader({
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="bg-[#FFEB3B] px-4 py-3 flex items-center justify-between sticky top-0 z-50"
     >
-      <div className="flex items-center gap-2">
-        {shopName && (
-          <h1 className="font-bold text-gray-900 text-base truncate max-w-[200px]">
-            {shopName}
-          </h1>
-        )}
-      </div>
-
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 min-w-0">
         <Link href="/customer/profile" className="flex-shrink-0">
           {avatarUrl ? (
             <img
@@ -48,20 +45,31 @@ export function CustomerHeader({
             </div>
           )}
         </Link>
+        <span className="font-bold text-gray-900 text-sm truncate">
+          {userName || shopName || "ゲスト"}
+        </span>
+      </div>
 
+      <div className="flex items-center gap-3 flex-shrink-0">
+        {points !== undefined && (
+          <span className="font-bold text-gray-900 text-sm tracking-wide">
+            {points.toLocaleString()}PT
+          </span>
+        )}
         {showCart && (
-          <Link href={cartHref} className="relative flex-shrink-0">
+          <button onClick={onCartClick} className="relative">
             <ShoppingCart className="w-6 h-6 text-gray-900" />
-            {cartCount > 0 && (
+            {itemCount > 0 && (
               <motion.span
+                key={itemCount}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center leading-none px-1"
               >
-                {cartCount}
+                {itemCount > 99 ? "99+" : itemCount}
               </motion.span>
             )}
-          </Link>
+          </button>
         )}
       </div>
     </motion.header>

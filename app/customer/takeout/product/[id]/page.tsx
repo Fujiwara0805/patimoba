@@ -3,99 +3,109 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { CustomerHeader } from "@/components/customer/customer-header";
 import { StepProgress } from "@/components/customer/step-progress";
-import { CartModal } from "@/components/customer/cart-modal";
-import type { CartItem } from "@/components/customer/cart-modal";
-import { useProduct } from "@/hooks/use-products";
+import { CartDrawer } from "@/components/customer/cart-drawer";
+import { useProductRegistration } from "@/hooks/use-product-registrations";
 import { useCustomerContext } from "@/lib/customer-context";
-import { Product } from "@/lib/types";
+import { useCart } from "@/lib/cart-context";
 
 const steps = ["店舗選択", "商品選択", "受取日時", "注文確認"];
+
+function formatLimitDate(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+}
 
 export default function TakeoutProductDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { selectedStoreName } = useCustomerContext();
-  const { product, loading } = useProduct(params.id as string);
+  const { selectedStoreId, profile } = useCustomerContext();
+  const { product, loading } = useProductRegistration(params.id as string);
+  const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [showQuantityDropdown, setShowQuantityDropdown] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [showCart, setShowCart] = useState(false);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
+
+  const handleStepClick = (step: number) => {
+    if (step === 1) router.push("/customer/takeout");
+    if (step === 2 && selectedStoreId) router.push(`/customer/takeout/products?store=${selectedStoreId}`);
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-gray-500">読み込み中...</p>
+      <div className="min-h-screen bg-white flex flex-col">
+        <CustomerHeader
+          userName={profile?.lineName}
+          avatarUrl={profile?.avatar || undefined}
+          points={profile?.points}
+          onCartClick={() => setCartOpen(true)}
+        />
+        <StepProgress currentStep={2} steps={steps} onStepClick={handleStepClick} />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 text-amber-400 animate-spin" />
+        </div>
       </div>
     );
   }
 
   if (!product) return null;
 
+  const isLimited = !!(product.order_start_date && product.order_end_date);
+  const limitDateStr = formatLimitDate(product.order_end_date);
+  const maxQty = product.max_per_order || 10;
+
   const handleAddToCart = () => {
-    const existing = cartItems.find((item) => item.id === product.id);
-    if (existing) {
-      setCartItems((prev) =>
-        prev.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        )
-      );
-    } else {
-      setCartItems((prev) => [
-        ...prev,
-        {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          quantity,
-        },
-      ]);
-    }
+    addItem({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image || "",
+      quantity,
+      storeId: product.store_id,
+    });
 
     setShowToast(true);
     setTimeout(() => {
       setShowToast(false);
-      setShowCart(true);
-    }, 1200);
+      setCartOpen(true);
+    }, 1000);
   };
 
-  const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-
   return (
-    <div className="min-h-screen bg-white">
-      <CustomerHeader shopName={selectedStoreName || "パティモバ"} />
+    <div className="min-h-screen bg-white flex flex-col">
+      <CustomerHeader
+        userName={profile?.lineName}
+        avatarUrl={profile?.avatar || undefined}
+        points={profile?.points}
+        onCartClick={() => setCartOpen(true)}
+      />
 
-      <div className="px-4 pt-2">
-        <Link
-          href="/customer/takeout/products"
-          className="inline-flex items-center text-gray-600 mb-1"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-      </div>
+      <StepProgress currentStep={2} steps={steps} onStepClick={handleStepClick} />
 
-      <StepProgress currentStep={2} steps={steps} />
-
-      <div className="px-4 pb-8">
+      <div className="px-5 pb-10 flex-1 max-w-lg mx-auto w-full">
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-xl overflow-hidden bg-gray-100 aspect-[4/3] mb-4"
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="relative rounded-2xl overflow-hidden bg-gray-100 aspect-square shadow-[0_8px_30px_rgba(0,0,0,0.08)] ring-1 ring-black/5 mb-6"
         >
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
-          {product.isLimited && (
-            <span className="absolute top-3 left-3 bg-pink-500 text-white text-xs font-bold px-4 py-1.5 rounded">
+          {product.image ? (
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+              No Image
+            </div>
+          )}
+          {isLimited && (
+            <span className="absolute top-3 left-3 bg-[#A855B7] text-white text-[11px] font-bold tracking-wide px-3.5 py-1.5 rounded-md shadow-sm">
               期間限定
             </span>
           )}
@@ -104,129 +114,142 @@ export default function TakeoutProductDetailPage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+          transition={{ delay: 0.08, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-0"
         >
-          <h1 className="text-xl font-bold text-gray-900">{product.name}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight leading-snug">
+            {product.name}
+          </h1>
 
-          {product.isLimited && product.limitedUntil && (
-            <p className="text-sm mt-1">
-              <span className="text-red-500 font-bold">{product.limitedUntil}</span>
-              <span className="text-gray-700">までの日付から予約日を選択できます</span>
+          {isLimited && limitDateStr && (
+            <p className="text-sm mt-3 leading-relaxed">
+              <span className="text-red-500 font-bold">{limitDateStr}</span>
+              <span className="text-gray-800">までの日付から予約日を選択できます</span>
             </p>
           )}
 
-          <p className="text-gray-600 text-sm mt-3 whitespace-pre-line leading-relaxed">
-            {product.description}
-          </p>
+          {product.description && (
+            <p className="text-gray-600 text-sm mt-5 whitespace-pre-line leading-[1.75]">
+              {product.description}
+            </p>
+          )}
 
-          <div className="flex items-end justify-between mt-4">
-            <p>
-              <span className="text-3xl font-bold text-gray-900">
+          {product.ingredients && (
+            <div className="mt-5 pt-4 border-t border-gray-100 flex items-start gap-3">
+              <span className="text-xs text-gray-500 font-medium whitespace-nowrap pt-0.5">
+                アレルゲン
+              </span>
+              <span className="text-sm text-gray-700 leading-relaxed">{product.ingredients}</span>
+            </div>
+          )}
+
+          <div className="flex items-end justify-between gap-4 mt-8">
+            <p className="flex items-baseline gap-1">
+              <span className="text-4xl font-bold text-gray-900 tabular-nums">
                 {product.price.toLocaleString()}
               </span>
-              <span className="text-lg text-gray-900 ml-0.5">円</span>
+              <span className="text-xl font-bold text-gray-900">円</span>
             </p>
 
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
+                type="button"
                 onClick={() => setShowQuantityDropdown(!showQuantityDropdown)}
-                className="border border-gray-200 rounded-lg px-4 py-2.5 text-sm bg-white flex items-center gap-3"
+                className="rounded-lg px-4 py-2.5 min-w-[4.5rem] flex items-center justify-center gap-2 bg-[#FFF9C4] border border-amber-200/80 shadow-sm"
               >
-                <span className="font-bold text-base">{quantity}</span>
+                <span className="font-bold text-lg text-gray-900 tabular-nums">{quantity}</span>
                 <svg
-                  className="w-4 h-4 text-gray-400"
+                  className={`w-4 h-4 text-gray-500 transition-transform ${showQuantityDropdown ? "rotate-180" : ""}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
-              {showQuantityDropdown && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowQuantityDropdown(false)}
-                  />
-                  <motion.div
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute bottom-full right-0 mb-1 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-1 min-w-[80px]"
-                  >
-                    {Array.from(
-                      { length: product.maxQuantity },
-                      (_, i) => i + 1
-                    ).map((num) => (
-                      <button
-                        key={num}
-                        onClick={() => {
-                          setQuantity(num);
-                          setShowQuantityDropdown(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-amber-50 transition-colors flex items-center gap-2"
-                      >
-                        {quantity === num && (
-                          <span className="text-gray-900">&#10003;</span>
-                        )}
-                        <span>{num}</span>
-                      </button>
-                    ))}
-                  </motion.div>
-                </>
-              )}
+              <AnimatePresence>
+                {showQuantityDropdown && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowQuantityDropdown(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute bottom-full right-0 mb-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-1.5 min-w-[5.5rem] max-h-52 overflow-y-auto"
+                    >
+                      {Array.from({ length: maxQty }, (_, i) => i + 1).map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => {
+                            setQuantity(num);
+                            setShowQuantityDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#FFFDE7] transition-colors flex items-center gap-2"
+                        >
+                          {quantity === num && (
+                            <span className="text-amber-600 font-bold">&#10003;</span>
+                          )}
+                          <span className="font-medium text-gray-900">{num}</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleAddToCart}
-            className="w-full mt-6 bg-amber-400 hover:bg-amber-500 text-white font-bold py-3.5 rounded-full text-base transition-colors"
+          <motion.div
+            className="mt-8 flex justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.15 }}
           >
-            カートに追加
-          </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleAddToCart}
+              className="w-[72%] max-w-xs bg-amber-400 hover:bg-amber-500 text-white font-bold py-3.5 rounded-full text-base shadow-md shadow-amber-200/60 transition-colors"
+            >
+              カートに追加
+            </motion.button>
+          </motion.div>
         </motion.div>
       </div>
 
       <AnimatePresence>
         {showToast && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="fixed inset-0 z-[80] flex items-center justify-center pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center pointer-events-none bg-black/25"
           >
-            <div className="bg-white rounded-2xl shadow-2xl px-10 py-8">
-              <p className="text-lg font-bold text-gray-900">カートに追加されました</p>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 8 }}
+              transition={{ type: "spring", damping: 24, stiffness: 320 }}
+              className="bg-white rounded-2xl shadow-2xl px-12 py-10 mx-6"
+            >
+              <p className="text-lg font-bold text-gray-900 text-center whitespace-nowrap">
+                カートに追加されました
+              </p>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showCart && (
-          <CartModal
-            items={cartItems}
-            onClose={() => setShowCart(false)}
-            onUpdateQuantity={(id, qty) =>
-              setCartItems((prev) =>
-                prev.map((item) => (item.id === id ? { ...item, quantity: qty } : item))
-              )
-            }
-            onRemove={(id) =>
-              setCartItems((prev) => prev.filter((item) => item.id !== id))
-            }
-            onProceed={() => router.push("/customer/takeout/pickup")}
-            proceedLabel="日時選択に進む"
-          />
-        )}
-      </AnimatePresence>
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </div>
   );
 }

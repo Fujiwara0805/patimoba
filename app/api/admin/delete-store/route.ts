@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     const directChildren = [
       "point_transactions",
       "orders",
-      "products",
+      "product_registrations",
       "whole_cake_products",
       "candle_options",
       "product_categories",

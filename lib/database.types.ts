@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -85,7 +87,22 @@ export type Database = {
           store_id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bds_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_day_schedules_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       candle_options: {
         Row: {
@@ -115,7 +132,22 @@ export type Database = {
           store_id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "candle_options_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "co_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       closed_day_rules: {
         Row: {
@@ -142,7 +174,22 @@ export type Database = {
           store_id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cdr_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "closed_day_rules_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coupons: {
         Row: {
@@ -172,7 +219,15 @@ export type Database = {
           store_id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "coupons_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customer_anniversaries: {
         Row: {
@@ -205,7 +260,36 @@ export type Database = {
           store_id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ca_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ca_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_anniversaries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_anniversaries_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customer_coupons: {
         Row: {
@@ -232,7 +316,36 @@ export type Database = {
           quantity?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cc_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cc_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_coupons_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_coupons_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customer_store_relationships: {
         Row: {
@@ -274,7 +387,36 @@ export type Database = {
           total_spent?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "csr_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "csr_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_store_relationships_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_store_relationships_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customers: {
         Row: {
@@ -403,7 +545,22 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "order_customer_info_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_customer_info_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_item_details: {
         Row: {
@@ -451,7 +608,36 @@ export type Database = {
           whole_cake_option_id?: string | null
           whole_cake_size_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "order_item_details_candle_option_id_fkey"
+            columns: ["candle_option_id"]
+            isOneToOne: false
+            referencedRelation: "candle_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_details_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_details_whole_cake_option_id_fkey"
+            columns: ["whole_cake_option_id"]
+            isOneToOne: false
+            referencedRelation: "whole_cake_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_item_details_whole_cake_size_id_fkey"
+            columns: ["whole_cake_size_id"]
+            isOneToOne: false
+            referencedRelation: "whole_cake_sizes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_items: {
         Row: {
@@ -490,7 +676,29 @@ export type Database = {
           updated_at?: string | null
           whole_cake_product_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_whole_cake_product_id_fkey"
+            columns: ["whole_cake_product_id"]
+            isOneToOne: false
+            referencedRelation: "whole_cake_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       orders: {
         Row: {
@@ -595,7 +803,22 @@ export type Database = {
           updated_at?: string | null
           visit_time?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       point_transactions: {
         Row: {
@@ -631,7 +854,50 @@ export type Database = {
           store_id?: string
           type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "point_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "point_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "point_transactions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pt_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pt_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pt_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_categories: {
         Row: {
@@ -658,7 +924,124 @@ export type Database = {
           store_id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pc_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_categories_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_registrations: {
+        Row: {
+          accept_orders: boolean | null
+          always_available: boolean | null
+          created_date: string | null
+          cross_section_image: string | null
+          cur_same_day: boolean | null
+          decoration: boolean | null
+          description: string | null
+          expiration_days: number | null
+          id: string
+          image: string | null
+          ingredients: string | null
+          is_ec: boolean | null
+          max_per_day: number | null
+          max_per_order: number | null
+          name: string | null
+          order_end_date: string | null
+          order_start_date: string | null
+          preparation_days: number | null
+          price: number | null
+          product_type_id: string | null
+          shipping_type: string | null
+          sort_order: number | null
+          storage_type: string | null
+          store_id: string
+          updated_at: string | null
+          volume: string | null
+        }
+        Insert: {
+          accept_orders?: boolean | null
+          always_available?: boolean | null
+          created_date?: string | null
+          cross_section_image?: string | null
+          cur_same_day?: boolean | null
+          decoration?: boolean | null
+          description?: string | null
+          expiration_days?: number | null
+          id?: string
+          image?: string | null
+          ingredients?: string | null
+          is_ec?: boolean | null
+          max_per_day?: number | null
+          max_per_order?: number | null
+          name?: string | null
+          order_end_date?: string | null
+          order_start_date?: string | null
+          preparation_days?: number | null
+          price?: number | null
+          product_type_id?: string | null
+          shipping_type?: string | null
+          sort_order?: number | null
+          storage_type?: string | null
+          store_id: string
+          updated_at?: string | null
+          volume?: string | null
+        }
+        Update: {
+          accept_orders?: boolean | null
+          always_available?: boolean | null
+          created_date?: string | null
+          cross_section_image?: string | null
+          cur_same_day?: boolean | null
+          decoration?: boolean | null
+          description?: string | null
+          expiration_days?: number | null
+          id?: string
+          image?: string | null
+          ingredients?: string | null
+          is_ec?: boolean | null
+          max_per_day?: number | null
+          max_per_order?: number | null
+          name?: string | null
+          order_end_date?: string | null
+          order_start_date?: string | null
+          preparation_days?: number | null
+          price?: number | null
+          product_type_id?: string | null
+          shipping_type?: string | null
+          sort_order?: number | null
+          storage_type?: string | null
+          store_id?: string
+          updated_at?: string | null
+          volume?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_registrations_product_type_id_fkey"
+            columns: ["product_type_id"]
+            isOneToOne: false
+            referencedRelation: "product_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_registrations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_types: {
         Row: {
@@ -680,99 +1063,6 @@ export type Database = {
           id?: string
           product_type?: string
           type_code?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      products: {
-        Row: {
-          accept_orders: boolean | null
-          always_available: boolean | null
-          category: string | null
-          category_id: string | null
-          created_at: string | null
-          created_by: string | null
-          decoration: boolean | null
-          description: string | null
-          expiration_days: number | null
-          id: string
-          image: string | null
-          ingredients: string | null
-          is_ec: boolean | null
-          is_limited: boolean | null
-          limited_until: string | null
-          max_per_day: number | null
-          max_per_order: number | null
-          name: string
-          order_end_date: string | null
-          order_start_date: string | null
-          prep_days: number | null
-          price: number
-          shipping_type: string | null
-          sort_order: number | null
-          storage_type: string | null
-          store_id: string
-          today_available: boolean | null
-          updated_at: string | null
-        }
-        Insert: {
-          accept_orders?: boolean | null
-          always_available?: boolean | null
-          category?: string | null
-          category_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          decoration?: boolean | null
-          description?: string | null
-          expiration_days?: number | null
-          id?: string
-          image?: string | null
-          ingredients?: string | null
-          is_ec?: boolean | null
-          is_limited?: boolean | null
-          limited_until?: string | null
-          max_per_day?: number | null
-          max_per_order?: number | null
-          name?: string
-          order_end_date?: string | null
-          order_start_date?: string | null
-          prep_days?: number | null
-          price?: number
-          shipping_type?: string | null
-          sort_order?: number | null
-          storage_type?: string | null
-          store_id: string
-          today_available?: boolean | null
-          updated_at?: string | null
-        }
-        Update: {
-          accept_orders?: boolean | null
-          always_available?: boolean | null
-          category?: string | null
-          category_id?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          decoration?: boolean | null
-          description?: string | null
-          expiration_days?: number | null
-          id?: string
-          image?: string | null
-          ingredients?: string | null
-          is_ec?: boolean | null
-          is_limited?: boolean | null
-          limited_until?: string | null
-          max_per_day?: number | null
-          max_per_order?: number | null
-          name?: string
-          order_end_date?: string | null
-          order_start_date?: string | null
-          prep_days?: number | null
-          price?: number
-          shipping_type?: string | null
-          sort_order?: number | null
-          storage_type?: string | null
-          store_id?: string
-          today_available?: boolean | null
           updated_at?: string | null
         }
         Relationships: []
@@ -814,7 +1104,22 @@ export type Database = {
           prefecture?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sa_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_addresses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shipping_fees: {
         Row: {
@@ -844,7 +1149,22 @@ export type Database = {
           store_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sf_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_fees_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       store_users: {
         Row: {
@@ -874,7 +1194,15 @@ export type Database = {
           store_id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "store_users_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stores: {
         Row: {
@@ -905,6 +1233,7 @@ export type Database = {
           plan: string | null
           postal_code: string | null
           prefecture: string | null
+          same_day_cutoff_minutes: number | null
           specified_commercial_transaction: string | null
           status: string | null
           updated_at: string | null
@@ -937,6 +1266,7 @@ export type Database = {
           plan?: string | null
           postal_code?: string | null
           prefecture?: string | null
+          same_day_cutoff_minutes?: number | null
           specified_commercial_transaction?: string | null
           status?: string | null
           updated_at?: string | null
@@ -969,6 +1299,7 @@ export type Database = {
           plan?: string | null
           postal_code?: string | null
           prefecture?: string | null
+          same_day_cutoff_minutes?: number | null
           specified_commercial_transaction?: string | null
           status?: string | null
           updated_at?: string | null
@@ -1009,7 +1340,22 @@ export type Database = {
           store_id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sub_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whole_cake_options: {
         Row: {
@@ -1045,7 +1391,22 @@ export type Database = {
           updated_at?: string | null
           whole_cake_product_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "wco_product_id_fkey"
+            columns: ["whole_cake_product_id"]
+            isOneToOne: false
+            referencedRelation: "whole_cake_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whole_cake_options_whole_cake_product_id_fkey"
+            columns: ["whole_cake_product_id"]
+            isOneToOne: false
+            referencedRelation: "whole_cake_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whole_cake_products: {
         Row: {
@@ -1078,7 +1439,22 @@ export type Database = {
           store_id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "wcp_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whole_cake_products_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       whole_cake_sizes: {
         Row: {
@@ -1111,7 +1487,22 @@ export type Database = {
           updated_at?: string | null
           whole_cake_product_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "wcs_product_id_fkey"
+            columns: ["whole_cake_product_id"]
+            isOneToOne: false
+            referencedRelation: "whole_cake_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whole_cake_sizes_whole_cake_product_id_fkey"
+            columns: ["whole_cake_product_id"]
+            isOneToOne: false
+            referencedRelation: "whole_cake_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1128,3 +1519,126 @@ export type Database = {
     }
   }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

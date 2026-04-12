@@ -1,45 +1,76 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { CustomerHeader } from "@/components/customer/customer-header";
 import { StepProgress } from "@/components/customer/step-progress";
+import { CartDrawer } from "@/components/customer/cart-drawer";
 import { WholeCakeBasicStep } from "@/components/customer/whole-cake/basic-step";
 import { WholeCakeOptionsStep } from "@/components/customer/whole-cake/options-step";
 import { WholeCakeConfirmStep } from "@/components/customer/whole-cake/confirm-step";
 import type { CandleEntry } from "@/components/customer/whole-cake/basic-step";
 import { useWholeCakes } from "@/hooks/use-whole-cakes";
 import { useCustomerContext } from "@/lib/customer-context";
+import { useCart } from "@/lib/cart-context";
+import type {
+  UICartItem,
+  CartCandleEntry,
+  CartCakeOptionEntry,
+} from "@/lib/types";
 
 const wholeCakeSteps = ["基本選択", "オプション", "内容確認"];
 
 export default function WholeCakePage() {
   const router = useRouter();
-  const { selectedStoreName, selectedStoreId } = useCustomerContext();
+  const searchParams = useSearchParams();
+  const cakeIdParam = searchParams.get("cakeId");
+  const { selectedStoreId, profile } = useCustomerContext();
+  const { addItem } = useCart();
   const [step, setStep] = useState(1);
-  const { wholeCakes, candleOptions, loading } = useWholeCakes(selectedStoreId ?? "");
+  const [cartOpen, setCartOpen] = useState(false);
 
-  const [selectedCakeId, setSelectedCakeId] = useState("");
+  const { wholeCakes, candleOptions, loading } = useWholeCakes(
+    selectedStoreId ?? ""
+  );
+
   const [selectedSizeId, setSelectedSizeId] = useState("");
   const [candles, setCandles] = useState<CandleEntry[]>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [allergyNote, setAllergyNote] = useState("");
 
-  // Set default cake once loaded
-  if (!selectedCakeId && wholeCakes.length > 0) {
-    setSelectedCakeId(wholeCakes[0].id);
-  }
+  const selectedCake = useMemo(() => {
+    if (cakeIdParam) {
+      return wholeCakes.find((c) => c.id === cakeIdParam) ?? null;
+    }
+    return wholeCakes[0] ?? null;
+  }, [wholeCakes, cakeIdParam]);
 
   if (loading) {
-    return <div className="min-h-screen bg-white flex items-center justify-center text-gray-500">読み込み中...</div>;
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Loader2 className="w-6 h-6 text-amber-400 animate-spin" />
+      </div>
+    );
   }
 
-  const selectedCake = wholeCakes.find((c) => c.id === selectedCakeId);
   if (!selectedCake) {
-    return <div className="min-h-screen bg-white flex items-center justify-center text-gray-500">ホールケーキが見つかりません</div>;
+    return (
+      <div className="min-h-screen bg-white">
+        <CustomerHeader
+          userName={profile?.lineName}
+          avatarUrl={profile?.avatar || undefined}
+          points={profile?.points}
+          onCartClick={() => setCartOpen(true)}
+        />
+        <div className="flex items-center justify-center py-24 text-gray-500 text-sm">
+          ホールケーキが見つかりません
+        </div>
+        <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      </div>
+    );
   }
 
   const selectedSize = selectedCake.sizes.find((s) => s.id === selectedSizeId);
@@ -58,9 +89,74 @@ export default function WholeCakePage() {
 
   const total = sizePrice + candleTotal + optionTotal;
 
+  const buildCartItem = (): UICartItem | null => {
+    if (!selectedSize) return null;
+
+    const validCandles: CartCandleEntry[] = candles
+      .filter((c) => c.candleOptionId && Number(c.quantity) > 0)
+      .map((c) => {
+        const opt = candleOptions.find((o) => o.id === c.candleOptionId);
+        return {
+          candleOptionId: c.candleOptionId,
+          name: opt?.name || "",
+          price: Number(opt?.price) || 0,
+          quantity: Number(c.quantity) || 0,
+        };
+      });
+
+    const cakeOptions: CartCakeOptionEntry[] = selectedOptionIds
+      .map((oid) => selectedCake.options.find((o) => o.id === oid))
+      .filter((o): o is NonNullable<typeof o> => !!o)
+      .map((o) => ({
+        wholeCakeOptionId: o.id,
+        name: o.name,
+        price: Number(o.price) || 0,
+      }));
+
+    return {
+      productId: selectedCake.id,
+      name: selectedCake.name,
+      price: 0,
+      quantity: 1,
+      image: selectedCake.image,
+      storeId: selectedCake.storeId,
+      isCustomCake: true,
+      uid: `wc-${selectedCake.id}-${Date.now()}`,
+      customization: {
+        sizeId: selectedSize.id,
+        sizeLabel: selectedSize.label,
+        sizeServings: selectedSize.servings,
+        sizePrice: Number(selectedSize.price) || 0,
+        candles: validCandles,
+        options: cakeOptions,
+        messagePlate: messageText || undefined,
+        allergyNote: allergyNote || undefined,
+      },
+    };
+  };
+
+  const handleAddToCart = () => {
+    const item = buildCartItem();
+    if (!item) return;
+    addItem(item);
+    router.push("/customer/takeout/products");
+  };
+
+  const handleProceedToDateTime = () => {
+    const item = buildCartItem();
+    if (!item) return;
+    addItem(item);
+    router.push("/customer/takeout/pickup");
+  };
+
   return (
     <div className="min-h-screen bg-white">
-      <CustomerHeader shopName={selectedStoreName || "パティモバ"} />
+      <CustomerHeader
+        userName={profile?.lineName}
+        avatarUrl={profile?.avatar || undefined}
+        points={profile?.points}
+        onCartClick={() => setCartOpen(true)}
+      />
 
       <div className="px-4 pt-2">
         {step === 1 ? (
@@ -93,7 +189,7 @@ export default function WholeCakePage() {
           messageText={messageText}
           onMessageChange={setMessageText}
           total={total}
-          canProceed={selectedSizeId !== ""}
+          canProceed={selectedSizeId !== "" && messageText.trim() !== ""}
           onNext={() => setStep(2)}
         />
       )}
@@ -119,10 +215,12 @@ export default function WholeCakePage() {
           allergyNote={allergyNote}
           onAllergyChange={setAllergyNote}
           total={total}
-          onAddToCart={() => router.push("/customer/takeout/products")}
-          onProceedToDateTime={() => router.push("/customer/takeout/pickup")}
+          onAddToCart={handleAddToCart}
+          onProceedToDateTime={handleProceedToDateTime}
         />
       )}
+
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </div>
   );
 }

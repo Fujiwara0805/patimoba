@@ -11,10 +11,10 @@ interface ProductDetailPanelProps {
   product: ProductRegistration;
   onClose: () => void;
   onSave: (
-    id: number,
+    id: string,
     updates: Partial<Omit<ProductRegistration, "id" | "store_id">>
   ) => Promise<{ error: string | null }>;
-  onDelete: (id: number) => Promise<{ error: string | null }>;
+  onDelete: (id: string) => Promise<{ error: string | null }>;
 }
 
 export function ProductDetailPanel({
@@ -28,7 +28,7 @@ export function ProductDetailPanel({
 
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(
-    product.descriprion || product.description || ""
+    product.description || ""
   );
   const [price, setPrice] = useState(
     product.price > 0 ? `¥${product.price.toLocaleString()}` : ""
@@ -50,7 +50,7 @@ export function ProductDetailPanel({
 
   useEffect(() => {
     setName(product.name);
-    setDescription(product.descriprion || product.description || "");
+    setDescription(product.description || "");
     setPrice(
       product.price > 0 ? `¥${product.price.toLocaleString()}` : ""
     );
@@ -77,7 +77,7 @@ export function ProductDetailPanel({
       const typeMatch = productTypes.find((t) => t.productType === category);
       const { error: err } = await onSave(product.id, {
         name: name.trim(),
-        descriprion: description.trim(),
+        description: description.trim(),
         price: parsePriceValue(price),
         preparation_days: parseInt(prepDays) || 0,
         max_per_order: parseInt(maxPerOrder) || 10,

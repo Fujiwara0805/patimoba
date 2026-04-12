@@ -74,6 +74,20 @@ export function useOrderMutations() {
     }
 
     try {
+      const calcItemSubtotal = (item: UICartItem) => {
+        const c = item.customization
+        if (!c) return item.price * item.quantity
+        const candleSum = (c.candles || []).reduce(
+          (s, cd) => s + cd.price * cd.quantity,
+          0
+        )
+        const optionSum = (c.options || []).reduce((s, op) => s + op.price, 0)
+        return (
+          item.price * item.quantity +
+          ((c.sizePrice ?? 0) + candleSum + optionSum) * item.quantity
+        )
+      }
+
       const orderItems = input.items.map((item) => ({
         order_id: order.id,
         product_id: item.isCustomCake ? null : item.productId,
@@ -81,7 +95,7 @@ export function useOrderMutations() {
         name: item.name,
         quantity: item.quantity,
         unit_price: item.price,
-        subtotal: item.price * item.quantity + (item.customization?.sizePrice ?? 0) * item.quantity,
+        subtotal: calcItemSubtotal(item),
       }))
 
       const { data: insertedItems, error: itemsErr } = await supabase
@@ -106,23 +120,25 @@ export function useOrderMutations() {
             whole_cake_size_id: c.sizeId,
           })
         }
-        if (c.candleTypeId && c.candleCount) {
+        for (const cd of c.candles || []) {
+          if (!cd.candleOptionId || cd.quantity <= 0) continue
           details.push({
             order_item_id: insertedId,
             detail_type: "candle",
-            label: c.candleName ?? "",
-            price: c.candlePrice ?? 0,
-            quantity: c.candleCount,
-            candle_option_id: c.candleTypeId,
+            label: cd.name,
+            price: cd.price,
+            quantity: cd.quantity,
+            candle_option_id: cd.candleOptionId,
           })
         }
-        if (c.optionTypeId) {
+        for (const op of c.options || []) {
+          if (!op.wholeCakeOptionId) continue
           details.push({
             order_item_id: insertedId,
             detail_type: "option",
-            label: c.optionName ?? "",
-            price: c.optionPrice ?? 0,
-            whole_cake_option_id: c.optionTypeId,
+            label: op.name,
+            price: op.price,
+            whole_cake_option_id: op.wholeCakeOptionId,
           })
         }
         if (c.messagePlate) {
@@ -132,6 +148,15 @@ export function useOrderMutations() {
             label: "メッセージ",
             price: 0,
             message_text: c.messagePlate,
+          })
+        }
+        if (c.allergyNote) {
+          details.push({
+            order_item_id: insertedId,
+            detail_type: "allergy",
+            label: "アレルギー",
+            price: 0,
+            allergy_note: c.allergyNote,
           })
         }
 

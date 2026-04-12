@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CustomerHeader } from "@/components/customer/customer-header";
 import { StepProgress } from "@/components/customer/step-progress";
@@ -86,15 +84,6 @@ export default function TakeoutPickupPage() {
   return (
     <div className="min-h-screen bg-white">
       <CustomerHeader shopName={selectedStoreName || "パティモバ"} />
-
-      <div className="px-4 pt-2">
-        <Link
-          href="/customer/takeout/products"
-          className="inline-flex items-center text-gray-600 mb-1"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-      </div>
 
       <StepProgress currentStep={3} steps={steps} />
 

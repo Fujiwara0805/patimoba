@@ -10,7 +10,7 @@ export type AnniversaryType = "birthday" | "wedding" | "other"
 export type StorePlan = "basic" | "standard" | "premium"
 
 type StoreRow = Database["public"]["Tables"]["stores"]["Row"]
-type ProductRow = Database["public"]["Tables"]["products"]["Row"]
+type ProductRow = Database["public"]["Tables"]["product_registrations"]["Row"]
 type OrderRow = Database["public"]["Tables"]["orders"]["Row"]
 type CustomerRow = Database["public"]["Tables"]["customers"]["Row"]
 type CustomerStoreRelRow = Database["public"]["Tables"]["customer_store_relationships"]["Row"]
@@ -119,6 +119,7 @@ export interface Store {
   status: string
   notification: boolean
   joinDate: string | null
+  sameDayCutoffMinutes: number | null
 }
 
 export interface CandleOption {
@@ -199,6 +200,19 @@ export interface UIOwnedCoupon {
   discountPrice?: number
 }
 
+export interface CartCandleEntry {
+  candleOptionId: string
+  name: string
+  price: number
+  quantity: number
+}
+
+export interface CartCakeOptionEntry {
+  wholeCakeOptionId: string
+  name: string
+  price: number
+}
+
 export interface UICartItem {
   productId: string
   name: string
@@ -207,18 +221,16 @@ export interface UICartItem {
   image: string
   storeId: string
   isCustomCake?: boolean
+  uid?: string
   customization?: {
     sizeId?: string
     sizeLabel?: string
     sizePrice?: number
-    candleTypeId?: string
-    candleName?: string
-    candleCount?: number
-    candlePrice?: number
-    optionTypeId?: string
-    optionName?: string
-    optionPrice?: number
+    sizeServings?: string
+    candles?: CartCandleEntry[]
+    options?: CartCakeOptionEntry[]
     messagePlate?: string
+    allergyNote?: string
   }
 }
 
@@ -274,6 +286,7 @@ export function toUIStore(row: StoreRow): Store {
     status: row.status || "active",
     notification: row.notification ?? false,
     joinDate: row.join_date,
+    sameDayCutoffMinutes: row.same_day_cutoff_minutes ?? null,
   }
 }
 
@@ -292,7 +305,7 @@ export function toUIProduct(row: ProductRow, category?: string): Product {
     name: row.name || "",
     price: Number(row.price) || 0,
     image: row.image || "",
-    category: category || row.category || "その他",
+    category: category || "その他",
     description: row.description || "",
     isLimited,
     limitedUntil,
@@ -311,10 +324,10 @@ export function toUIManagedProduct(row: ProductRow, category?: string): ManagedP
     price: price > 0 ? `¥${price.toLocaleString()}` : "",
     priceNum: price,
     acceptOrders: row.accept_orders ?? false,
-    todayAvailable: row.today_available ?? false,
+    todayAvailable: row.cur_same_day ?? false,
     dailyMax: Number(row.max_per_day) || 30,
-    prepDays: Number(row.prep_days) || 0,
-    category: category || row.category || "その他",
+    prepDays: Number(row.preparation_days) || 0,
+    category: category || "その他",
     maxPerOrder: Number(row.max_per_order) || 10,
     isPublished: row.accept_orders ?? false,
     isEc: row.is_ec ?? false,

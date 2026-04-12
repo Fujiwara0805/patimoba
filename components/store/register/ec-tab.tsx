@@ -14,9 +14,8 @@ const expiryOptions = [
 ];
 
 interface EcProductRow {
-  id: number;
+  id: string;
   name: string | null;
-  descriprion: string | null;
   description: string | null;
   price: number | null;
   image: string | null;
@@ -34,7 +33,7 @@ export function EcTab() {
   const storeId = user?.storeId ?? null;
 
   const [products, setProducts] = useState<EcProductRow[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [productName, setProductName] = useState("");
@@ -100,12 +99,12 @@ export function EcTab() {
   }, []);
 
   const selectProduct = useCallback(
-    (id: number) => {
+    (id: string) => {
       const p = products.find((r) => r.id === id);
       if (!p) return;
       setSelectedId(p.id);
       setProductName(p.name ?? "");
-      setDescription(p.descriprion ?? p.description ?? "");
+      setDescription(p.description ?? "");
       setShippingMethod(p.shipping_type ?? "");
       setStorageMethod(p.storage_type ?? "");
       setIngredients(p.ingredients ?? "");
@@ -180,7 +179,7 @@ export function EcTab() {
       const payload = {
         store_id: storeId,
         name: productName.trim(),
-        descriprion: description.trim(),
+        description: description.trim(),
         price: parsePriceValue(price),
         is_ec: true,
         image: mainImage ?? null,
@@ -246,7 +245,7 @@ export function EcTab() {
   ) => (
     <div className="relative group">
       <input
-        ref={inputRef}
+        ref={inputRef as React.RefObject<HTMLInputElement>}
         type="file"
         accept="image/*"
         className="hidden"
@@ -310,7 +309,7 @@ export function EcTab() {
             if (v === "") {
               clearForm();
             } else {
-              selectProduct(Number(v));
+              selectProduct(v);
             }
           }}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-[240px]"

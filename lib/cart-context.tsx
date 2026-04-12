@@ -33,14 +33,18 @@ interface PersistedCart {
 }
 
 function cartItemKey(item: UICartItem): string {
+  if (item.uid) return item.uid
   if (!item.customization) return item.productId
   const c = item.customization
+  const candleKey = (c.candles || [])
+    .map((cd) => `${cd.candleOptionId}x${cd.quantity}`)
+    .join("|")
+  const optionKey = (c.options || []).map((op) => op.wholeCakeOptionId).join("|")
   return [
     item.productId,
     c.sizeId || "",
-    c.candleTypeId || "",
-    c.candleCount || 0,
-    c.optionTypeId || "",
+    candleKey,
+    optionKey,
     c.messagePlate || "",
   ].join(":")
 }
@@ -136,8 +140,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (item.customization) {
       const c = item.customization
       itemTotal += (c.sizePrice || 0) * item.quantity
-      itemTotal += (c.candlePrice || 0) * (c.candleCount || 0)
-      itemTotal += c.optionPrice || 0
+      const candleTotal = (c.candles || []).reduce(
+        (s, cd) => s + cd.price * cd.quantity,
+        0
+      )
+      const optionTotal = (c.options || []).reduce((s, op) => s + op.price, 0)
+      itemTotal += (candleTotal + optionTotal) * item.quantity
     }
     return sum + itemTotal
   }, 0)

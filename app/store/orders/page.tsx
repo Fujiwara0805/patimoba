@@ -47,7 +47,7 @@ export default function StoreOrdersPage() {
   const toggleCheck = async (id: string) => {
     const order = orders.find((o) => o.id === id);
     if (!order) return;
-    await updateOrderStatus(id, !order.isPrepared);
+    await togglePrepared(id, !order.isPrepared);
     setCheckedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
