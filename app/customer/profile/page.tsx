@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Loader2, Check, Trash2 } from "lucide-react";
+import { X, Plus, Loader2, Check, Trash2, LogOut } from "lucide-react";
 import { CustomerHeader } from "@/components/customer/customer-header";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
@@ -164,15 +164,40 @@ export default function CustomerProfilePage() {
       setAnnError("お客様情報の登録が必要です");
       return;
     }
-    if (!annStoreId) {
-      setAnnError("店舗情報が取得できませんでした");
-      return;
-    }
+
     const target = anniversaries.find((a) => a.tempId === tempId);
     if (!target) return;
     if (!target.label.trim()) {
       setAnnError("記念日名を入力してください");
       return;
+    }
+
+    // annStoreId が未取得の場合、保存時点で再取得する
+    let resolvedStoreId = annStoreId;
+    if (!resolvedStoreId) {
+      const { data: relData } = await supabase
+        .from("customer_store_relationships")
+        .select("store_id")
+        .eq("customer_id", customerId)
+        .limit(1)
+        .maybeSingle();
+      resolvedStoreId = relData?.store_id ?? null;
+
+      if (!resolvedStoreId) {
+        const { data: storeData } = await supabase
+          .from("stores")
+          .select("id")
+          .limit(1)
+          .maybeSingle();
+        resolvedStoreId = storeData?.id ?? null;
+      }
+
+      if (resolvedStoreId) {
+        setAnnStoreId(resolvedStoreId);
+      } else {
+        setAnnError("店舗情報が取得できませんでした。店舗を選択してから記念日を登録してください");
+        return;
+      }
     }
 
     setAnnError(null);
@@ -184,7 +209,7 @@ export default function CustomerProfilePage() {
       .from("customer_anniversaries")
       .insert({
         customer_id: customerId,
-        store_id: annStoreId,
+        store_id: resolvedStoreId,
         label: target.label.trim(),
         month: target.month,
         day: target.day,
@@ -329,7 +354,10 @@ export default function CustomerProfilePage() {
       setPassword("");
       setConfirmPassword("");
       setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      setTimeout(() => {
+        setSaved(false);
+        router.push("/customer/takeout");
+      }, 1200);
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
     } finally {
@@ -548,6 +576,20 @@ export default function CustomerProfilePage() {
           <p className="text-center text-xs text-gray-400 mt-3">
             入力内容はお店にのみ共有されます
           </p>
+
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              logout();
+              router.push("/");
+            }}
+            className="w-full mt-4 border-2 border-gray-300 text-gray-600 font-bold py-2.5 rounded-full text-sm flex items-center justify-center gap-1 hover:bg-gray-50 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            ログアウト
+          </motion.button>
 
           {!isNew && customerId && (
             <motion.button

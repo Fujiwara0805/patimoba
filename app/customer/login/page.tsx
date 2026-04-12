@@ -4,14 +4,38 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { LineLoginScreen } from "@/components/auth/line-login-screen";
+import { useAuth } from "@/lib/auth-context";
 
 export default function CustomerLoginPage() {
+  const router = useRouter();
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleLineLogin = () => {
     setIsLoading(true);
+  };
+
+  const handleEmailLogin = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!email || !password) return;
+
+    setError("");
+    setSubmitting(true);
+    try {
+      await login(email, password, "customer");
+      router.push("/customer/takeout");
+    } catch (err: any) {
+      setError(err.message || "ログインに失敗しました");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -82,7 +106,7 @@ export default function CustomerLoginPage() {
                   ログイン
                 </h2>
                 <p className="text-xs sm:text-sm text-gray-500">
-                  LINEアカウントでログインしてください
+                  LINEまたはメールアドレスでログイン
                 </p>
               </motion.div>
 
@@ -109,19 +133,74 @@ export default function CustomerLoginPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4, delay: 0.5 }}
-                className="mt-6 sm:mt-8 flex flex-col items-center gap-3 sm:gap-4"
+                className="mt-6 sm:mt-8 w-full flex flex-col items-center gap-4"
               >
-                <div className="flex items-center gap-3 w-full max-w-xs">
+                <div className="flex items-center gap-3 w-full">
                   <div className="flex-1 h-px bg-gray-200" />
                   <span className="text-xs text-gray-400">または</span>
                   <div className="flex-1 h-px bg-gray-200" />
                 </div>
 
+                <form
+                  onSubmit={handleEmailLogin}
+                  className="w-full flex flex-col gap-3"
+                >
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent transition-all"
+                    placeholder="メールアドレスを入力"
+                    autoComplete="email"
+                    required
+                  />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent transition-all"
+                    placeholder="パスワードを入力"
+                    autoComplete="current-password"
+                    required
+                  />
+
+                  <AnimatePresence>
+                    {error && (
+                      <motion.p
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="text-xs sm:text-sm text-red-500 text-center"
+                      >
+                        {error}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+
+                  <motion.button
+                    type="submit"
+                    whileHover={{ scale: submitting ? 1 : 1.02 }}
+                    whileTap={{ scale: submitting ? 1 : 0.97 }}
+                    disabled={submitting}
+                    className="w-full flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-500 text-white font-bold text-sm sm:text-base py-3 sm:py-3.5 rounded-xl transition-colors duration-200 shadow-lg shadow-amber-200/50 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                    メールアドレスでログイン
+                  </motion.button>
+                </form>
+
+                <Link
+                  href="/customer/signup"
+                  className="text-xs sm:text-sm text-amber-500 hover:text-amber-600 underline underline-offset-2 font-medium transition-colors"
+                >
+                  アカウントをお持ちでない方は新規作成はこちら
+                </Link>
+
                 <Link
                   href="/login"
                   className="text-xs sm:text-sm text-gray-500 hover:text-amber-600 transition-colors"
                 >
-                  メールアドレスでログイン（店舗・管理者向け）
+                  店舗・管理者の方はこちら
                 </Link>
               </motion.div>
 

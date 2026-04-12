@@ -7,44 +7,46 @@ import {
   Users,
   Building2,
   User,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  Bluetooth,
+  Loader2,
 } from "lucide-react";
 import { useOrders } from "@/hooks/use-orders";
 import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 import { useStoreContext } from "@/lib/store-context";
-import { OrderDetailModal } from "@/components/store/order-detail-modal";
 import { DatePickerPopup } from "@/components/store/date-picker-popup";
 import { useOrderMutations } from "@/hooks/use-order-mutations";
-import type { Order } from "@/lib/types";
 
 const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
 
 export default function StoreDashboardPage() {
   const { storeId } = useStoreContext();
-  const { orders, loading: ordersLoading, refetch: refetchOrders } = useOrders({ storeId });
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { orders, loading: ordersLoading, refetch: refetchOrders } = useOrders({
+    storeId,
+    unpreparedOnly: true,
+    date: selectedDate.toISOString(),
+  });
   const { stats, loading: statsLoading } = useDashboardStats(storeId);
   const { togglePrepared } = useOrderMutations();
 
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [modalOrder, setModalOrder] = useState<Order | null>(null);
+  const [confirmOrderId, setConfirmOrderId] = useState<string | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
   const dateRef = useRef<HTMLDivElement>(null);
 
-  const dateStr = `${selectedDate.getFullYear()}年${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日(${dayNames[selectedDate.getDay()]})`;
+  const dateStr = `${selectedDate.getFullYear()}年${
+    selectedDate.getMonth() + 1
+  }月${selectedDate.getDate()}日(${dayNames[selectedDate.getDay()]})`;
 
-  const handleTogglePrepared = async (id: string) => {
-    const order = orders.find((o) => o.id === id);
-    if (!order) return;
-    const newPrepared = !order.isPrepared;
-    await togglePrepared(id, newPrepared);
-    if (newPrepared) {
-      setModalOrder({ ...order, isPrepared: newPrepared });
+  const handleConfirmPrepared = async () => {
+    if (!confirmOrderId || confirmLoading) return;
+    setConfirmLoading(true);
+    try {
+      await togglePrepared(confirmOrderId, true);
+      await refetchOrders();
+    } finally {
+      setConfirmOrderId(null);
+      setConfirmLoading(false);
     }
-    refetchOrders();
   };
 
   useEffect(() => {
@@ -136,114 +138,142 @@ export default function StoreDashboardPage() {
       </div>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[40px_1fr_1fr_1.5fr_auto_1fr_80px] bg-[#FFF176] px-4 py-2.5 text-sm font-bold text-gray-700 items-center">
-          <span />
-          <span>LINE</span>
+        <div className="grid grid-cols-[1fr_1fr_1.5fr_auto_1fr_120px] bg-[#FFF176] px-4 py-2.5 text-sm font-bold text-gray-700 items-center">
+          <span>顧客名</span>
           <span>来店時間</span>
           <span>注文内容</span>
           <span />
           <span>合計金額</span>
-          <span className="text-center">準備</span>
+          <span className="text-center">準備状況</span>
         </div>
 
-        {orders.map((order, i) => (
-          <motion.div
-            key={order.id}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className={`grid grid-cols-[40px_1fr_1fr_1.5fr_auto_1fr_80px] px-4 py-3 items-center border-t border-gray-100 ${
-              !order.isPrepared ? "bg-pink-50" : "bg-white"
-            }`}
-          >
-            <div>
-              <button
-                onClick={() => handleTogglePrepared(order.id)}
-                className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                  order.isPrepared
-                    ? "bg-blue-500 border-blue-500"
-                    : "border-gray-300 bg-white"
-                }`}
-              >
-                {order.isPrepared && (
-                  <Check className="w-3.5 h-3.5 text-white" />
-                )}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center">
-                <User className="w-4 h-4 text-gray-500" />
+        {orders.length === 0 ? (
+          <div className="px-4 py-10 text-center text-sm text-gray-400 bg-white">
+            表示する注文はありません
+          </div>
+        ) : (
+          orders.map((order, i) => (
+            <motion.div
+              key={order.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              transition={{ delay: i * 0.05 }}
+              className="grid grid-cols-[1fr_1fr_1.5fr_auto_1fr_120px] px-4 py-3 items-center border-t border-gray-100 bg-pink-50"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center">
+                  <User className="w-4 h-4 text-gray-500" />
+                </div>
+                <span className="text-sm">{order.customerName || "-"}</span>
               </div>
-              <span className="text-sm">{order.customerName}</span>
-            </div>
 
-            <div className="text-sm text-gray-600">
-              {order.visitTime}
-              {order.address && (
-                <div className="text-xs text-gray-400 mt-0.5 line-clamp-2">
-                  {order.address}
-                  {order.pickupTimeSlot && (
-                    <>
-                      <br />
-                      受取時間：{order.pickupTimeSlot}
-                    </>
+              <div className="text-sm text-gray-600">
+                {order.visitTime || "-"}
+                {order.address && (
+                  <div className="text-xs text-gray-400 mt-0.5 line-clamp-2">
+                    {order.address}
+                    {order.pickupTimeSlot && (
+                      <>
+                        <br />
+                        受取時間：{order.pickupTimeSlot}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="text-sm">
+                {order.items.map((item, j) => (
+                  <div key={j}>{item.name}</div>
+                ))}
+              </div>
+
+              <div className="text-sm text-gray-500 px-2">
+                {order.items.map((item, j) => (
+                  <div key={j}>&times;{item.quantity}</div>
+                ))}
+              </div>
+
+              <div>
+                <div className="text-sm font-bold">
+                  &yen;{order.total.toLocaleString()}
+                  {order.shippingIncluded && (
+                    <span className="text-xs font-normal">(配送料込)</span>
                   )}
                 </div>
-              )}
-            </div>
-
-            <div className="text-sm">
-              {order.items.map((item, j) => (
-                <div key={j}>{item.name}</div>
-              ))}
-            </div>
-
-            <div className="text-sm text-gray-500 px-2">
-              {order.items.map((item, j) => (
-                <div key={j}>&times;{item.quantity}</div>
-              ))}
-            </div>
-
-            <div>
-              <div className="text-sm font-bold">
-                &yen;{order.total.toLocaleString()}
-                {order.shippingIncluded && (
-                  <span className="text-xs font-normal">(配送料込)</span>
-                )}
+                <div
+                  className={`text-xs ${
+                    order.paymentStatus === "決済済み"
+                      ? "text-green-600"
+                      : "text-blue-600"
+                  }`}
+                >
+                  {order.paymentStatus}
+                </div>
               </div>
-              <div
-                className={`text-xs ${
-                  order.paymentStatus === "決済済み"
-                    ? "text-green-600"
-                    : "text-blue-600"
-                }`}
-              >
-                {order.paymentStatus}
-              </div>
-            </div>
 
-            <div className="flex justify-center">
-              <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold ${
-                  order.isPrepared
-                    ? "bg-amber-400 text-white"
-                    : "bg-gray-200 text-gray-500"
-                }`}
-              >
-                {order.isPrepared ? "済" : "未"}
+              <div className="flex justify-center">
+                <motion.button
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setConfirmOrderId(order.id)}
+                  className="bg-amber-400 hover:bg-amber-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors"
+                >
+                  準備完了
+                </motion.button>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          ))
+        )}
       </div>
 
       <AnimatePresence>
-        {modalOrder && (
-          <OrderDetailModal
-            order={modalOrder}
-            onClose={() => setModalOrder(null)}
-          />
+        {confirmOrderId && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black z-50"
+              onClick={() => !confirmLoading && setConfirmOrderId(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.18 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl z-[60] p-6 w-[90%] max-w-sm"
+            >
+              <h3 className="text-base font-bold text-center mb-2">
+                準備完了にします
+              </h3>
+              <p className="text-xs text-gray-500 text-center mb-5">
+                この注文を準備完了にして一覧から外しますか？
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  disabled={confirmLoading}
+                  onClick={() => setConfirmOrderId(null)}
+                  className="flex-1 border-2 border-gray-300 text-gray-700 font-bold py-2.5 rounded-full text-sm hover:bg-gray-50 transition-colors disabled:opacity-60"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  disabled={confirmLoading}
+                  onClick={handleConfirmPrepared}
+                  className="flex-1 bg-amber-400 hover:bg-amber-500 text-white font-bold py-2.5 rounded-full text-sm flex items-center justify-center gap-1 disabled:opacity-60"
+                >
+                  {confirmLoading && (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  )}
+                  はい
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

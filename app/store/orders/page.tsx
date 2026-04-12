@@ -2,16 +2,20 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Check } from "lucide-react";
+import { User, Loader2 } from "lucide-react";
 import { useOrders } from "@/hooks/use-orders";
-import { useProductTypes } from "@/hooks/use-product-types";
 import { useStoreContext } from "@/lib/store-context";
 import { useOrderMutations } from "@/hooks/use-order-mutations";
-import type { Order } from "@/lib/types";
-import { OrderDetailModal } from "@/components/store/order-detail-modal";
 import { DatePickerPopup } from "@/components/store/date-picker-popup";
 
 const daysOfWeek = ["日", "月", "火", "水", "木", "金", "土"];
+
+const orderTypeOptions = [
+  { label: "すべて", value: "" },
+  { label: "テイクアウト", value: "takeout" },
+  { label: "クリスマス", value: "christmas" },
+  { label: "EC", value: "ec" },
+];
 
 function formatDate(date: Date) {
   const y = date.getFullYear();
@@ -21,17 +25,25 @@ function formatDate(date: Date) {
   return `${y}年${m}月${d}日(${day})`;
 }
 
+type ConfirmAction = {
+  orderId: string;
+  toPrepared: boolean;
+};
+
 export default function StoreOrdersPage() {
   const { storeId } = useStoreContext();
-  const { orders, loading: ordersLoading, refetch: refetchOrders } = useOrders({ storeId, unpreparedOnly: true });
-  const { categories, loading: typesLoading } = useProductTypes();
+  const [productType, setProductType] = useState("");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { orders, loading: ordersLoading, refetch: refetchOrders } = useOrders({
+    storeId,
+    orderType: productType || undefined,
+    date: selectedDate.toISOString(),
+  });
   const { togglePrepared } = useOrderMutations();
 
-  const [productType, setProductType] = useState("すべて");
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
   const dateRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,20 +56,19 @@ export default function StoreOrdersPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const toggleCheck = async (id: string) => {
-    const order = orders.find((o) => o.id === id);
-    if (!order) return;
-    await togglePrepared(id, !order.isPrepared);
-    setCheckedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-    refetchOrders();
+  const handleConfirm = async () => {
+    if (!confirmAction || confirmLoading) return;
+    setConfirmLoading(true);
+    try {
+      await togglePrepared(confirmAction.orderId, confirmAction.toPrepared);
+      await refetchOrders();
+    } finally {
+      setConfirmAction(null);
+      setConfirmLoading(false);
+    }
   };
 
-  if (ordersLoading || typesLoading) {
+  if (ordersLoading) {
     return (
       <div className="p-6 flex items-center justify-center">
         <p className="text-gray-500">読み込み中...</p>
@@ -71,16 +82,18 @@ export default function StoreOrdersPage() {
         <select
           value={productType}
           onChange={(e) => setProductType(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-[200px]"
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-[200px] bg-white"
         >
-          {categories.map((t) => (
-            <option key={t} value={t}>{t}</option>
+          {orderTypeOptions.map((opt) => (
+            <option key={opt.label} value={opt.value}>
+              {opt.label}
+            </option>
           ))}
         </select>
         <div ref={dateRef} className="relative">
           <button
             onClick={() => setShowDatePicker(!showDatePicker)}
-            className="border border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-500 min-w-[200px] text-left hover:border-gray-400 transition-colors"
+            className="border border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-700 min-w-[200px] text-left hover:border-gray-400 transition-colors"
           >
             {formatDate(selectedDate)}
           </button>
@@ -104,23 +117,23 @@ export default function StoreOrdersPage() {
       </div>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[40px_1.2fr_1.5fr_1.5fr_50px_1fr] bg-[#FFF176] px-4 py-2.5 text-sm font-bold text-gray-700 items-center">
-          <span />
-          <span>LINE</span>
+        <div className="grid grid-cols-[1.2fr_1.5fr_1.5fr_50px_1fr_100px] bg-[#FFF176] px-4 py-2.5 text-sm font-bold text-gray-700 items-center">
+          <span>顧客名</span>
           <span>来店時間</span>
           <span>注文内容</span>
           <span />
           <span>合計金額</span>
+          <span className="text-center">準備状況</span>
         </div>
 
         {orders.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm text-gray-400">
-            未準備の注文はありません
+          <div className="px-4 py-8 text-center text-sm text-gray-400 bg-white">
+            該当する注文はありません
           </div>
         )}
 
         {orders.map((order, i) => {
-          const isChecked = checkedIds.has(order.id);
+          const isPrepared = order.isPrepared;
           const isDelivery = !!order.address;
 
           return (
@@ -129,35 +142,19 @@ export default function StoreOrdersPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: i * 0.03 }}
-              onClick={() => setSelectedOrder(order)}
-              className={`grid grid-cols-[40px_1.2fr_1.5fr_1.5fr_50px_1fr] px-4 py-3 items-center border-t border-gray-100 cursor-pointer transition-colors ${
-                isDelivery
-                  ? "bg-pink-50 hover:bg-pink-100"
-                  : "hover:bg-gray-50"
+              className={`grid grid-cols-[1.2fr_1.5fr_1.5fr_50px_1fr_100px] px-4 py-3 items-center border-t border-gray-100 ${
+                isPrepared
+                  ? "bg-white"
+                  : isDelivery
+                  ? "bg-pink-50"
+                  : "bg-white"
               }`}
             >
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleCheck(order.id);
-                }}
-              >
-                <div
-                  className={`w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer transition-colors ${
-                    isChecked
-                      ? "bg-blue-500 border-blue-500"
-                      : "border-gray-300 bg-white"
-                  }`}
-                >
-                  {isChecked && <Check className="w-3.5 h-3.5 text-white" />}
-                </div>
-              </div>
-
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
                   <User className="w-4 h-4 text-gray-500" />
                 </div>
-                <span className="text-sm">{order.lineName}</span>
+                <span className="text-sm">{order.customerName || "-"}</span>
               </div>
 
               <div className="text-sm text-gray-600">
@@ -197,7 +194,8 @@ export default function StoreOrdersPage() {
                   className={`text-xs ${
                     order.paymentStatus === "決済済み"
                       ? "text-green-600"
-                      : order.paymentStatus === "店頭支払い" || order.paymentStatus === "銀行振込"
+                      : order.paymentStatus === "店頭支払い" ||
+                        order.paymentStatus === "銀行振込"
                       ? "text-blue-600"
                       : "text-gray-500"
                   }`}
@@ -205,17 +203,85 @@ export default function StoreOrdersPage() {
                   {order.paymentStatus}
                 </div>
               </div>
+
+              <div className="flex justify-center">
+                <motion.button
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() =>
+                    setConfirmAction({
+                      orderId: order.id,
+                      toPrepared: !isPrepared,
+                    })
+                  }
+                  className={`min-w-[56px] text-sm font-bold px-3 py-2 rounded-lg transition-colors ${
+                    isPrepared
+                      ? "bg-amber-400 hover:bg-amber-500 text-white"
+                      : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                  }`}
+                >
+                  {isPrepared ? "済" : "未"}
+                </motion.button>
+              </div>
             </motion.div>
           );
         })}
       </div>
 
       <AnimatePresence>
-        {selectedOrder && (
-          <OrderDetailModal
-            order={selectedOrder}
-            onClose={() => setSelectedOrder(null)}
-          />
+        {confirmAction && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black z-50"
+              onClick={() => !confirmLoading && setConfirmAction(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.18 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl z-[60] p-6 w-[90%] max-w-sm"
+            >
+              <h3 className="text-base font-bold text-center mb-2">
+                {confirmAction.toPrepared
+                  ? "準備完了にします"
+                  : "準備未完了に戻す"}
+              </h3>
+              <p className="text-xs text-gray-500 text-center mb-5">
+                {confirmAction.toPrepared
+                  ? "この注文を準備完了にしますか？"
+                  : "この注文を未準備に戻しますか？"}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  disabled={confirmLoading}
+                  onClick={() => setConfirmAction(null)}
+                  className="flex-1 border-2 border-gray-300 text-gray-700 font-bold py-2.5 rounded-full text-sm hover:bg-gray-50 transition-colors disabled:opacity-60"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  disabled={confirmLoading}
+                  onClick={handleConfirm}
+                  className={`flex-1 font-bold py-2.5 rounded-full text-sm flex items-center justify-center gap-1 disabled:opacity-60 text-white ${
+                    confirmAction.toPrepared
+                      ? "bg-amber-400 hover:bg-amber-500"
+                      : "bg-gray-500 hover:bg-gray-600"
+                  }`}
+                >
+                  {confirmLoading && (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  )}
+                  はい
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

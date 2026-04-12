@@ -13,6 +13,7 @@ interface UseOrdersOptions {
   from?: string
   to?: string
   unpreparedOnly?: boolean
+  orderType?: string
 }
 
 export function useOrders(options: UseOrdersOptions = {}) {
@@ -52,6 +53,9 @@ export function useOrders(options: UseOrdersOptions = {}) {
     if (options.unpreparedOnly) {
       query = query.or("is_prepared.is.null,is_prepared.eq.false")
     }
+    if (options.orderType) {
+      query = query.eq("order_type", options.orderType)
+    }
     if (options.from) query = query.gte("created_at", options.from)
     if (options.to) query = query.lte("created_at", options.to)
 
@@ -83,6 +87,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
     Array.isArray(options.status) ? options.status.join(",") : options.status,
     options.excludeStatus?.join(","),
     options.unpreparedOnly,
+    options.orderType,
   ])
 
   return { orders, loading, error, refetch: fetchOrders }

@@ -226,6 +226,7 @@ export function useOrderMutations() {
     const { error } = await supabase
       .from("orders")
       .update({
+        is_prepared: prepared,
         preparing: prepared,
         status: prepared ? "ready" : "confirmed",
         order_completed_at: prepared ? new Date().toISOString() : null,
