@@ -187,6 +187,16 @@ export default function CustomerLoginPage() {
                     {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                     メールアドレスでログイン
                   </motion.button>
+
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full">
+                    <Link
+                      href="/"
+                      className="flex w-full items-center justify-center gap-2 border-2 border-gray-200 bg-white text-gray-700 font-bold text-sm sm:text-base py-3 sm:py-3.5 rounded-xl transition-colors duration-200 hover:bg-gray-50 hover:border-gray-300"
+                    >
+                      <ArrowLeft className="w-4 h-4 shrink-0" />
+                      戻る
+                    </Link>
+                  </motion.div>
                 </form>
 
                 <Link

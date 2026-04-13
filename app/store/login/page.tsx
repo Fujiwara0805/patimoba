@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2, X } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2, X } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
 export default function StoreLoginPage() {
@@ -141,11 +141,21 @@ export default function StoreLoginPage() {
             whileTap={{ scale: 0.97 }}
             onClick={(e) => handleLogin(e as any)}
             disabled={submitting}
-            className="px-12 py-2.5 rounded-full border-2 border-amber-400 text-amber-500 font-bold text-sm hover:bg-amber-400 hover:text-white transition-all duration-200 mb-4 disabled:opacity-50 flex items-center gap-2"
+            className="px-12 py-2.5 rounded-full border-2 border-amber-400 text-amber-500 font-bold text-sm hover:bg-amber-400 hover:text-white transition-all duration-200 mb-3 disabled:opacity-50 flex items-center gap-2"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             ログイン
           </motion.button>
+
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Link
+              href="/login"
+              className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              戻る
+            </Link>
+          </motion.div>
 
           <button
             type="button"
