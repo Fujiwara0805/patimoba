@@ -22,11 +22,14 @@ function formatDate(date: Date) {
 
 export default function StoreOrderHistoryPage() {
   const { storeId } = useStoreContext();
-  const { orders, loading: ordersLoading } = useOrders({ storeId });
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { orders, loading: ordersLoading } = useOrders({
+    storeId,
+    date: selectedDate.toISOString(),
+  });
   const { categories, loading: typesLoading } = useProductTypes();
 
   const [productType, setProductType] = useState("すべて");
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -105,14 +108,14 @@ export default function StoreOrderHistoryPage() {
       </div>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[40px_1.2fr_1.5fr_1.5fr_50px_1fr_80px] bg-[#FFF176] px-4 py-2.5 text-sm font-bold text-gray-700 items-center">
+        <div className="grid grid-cols-[40px_1.2fr_1.5fr_1.5fr_50px_1fr_100px] bg-[#FFF176] px-4 py-2.5 text-sm font-bold text-gray-700 items-center">
           <span />
           <span>顧客名</span>
           <span>来店時間</span>
           <span>注文内容</span>
           <span />
           <span>合計金額</span>
-          <span className="text-center">準備</span>
+          <span className="text-center">準備状況</span>
         </div>
 
         {orders.length === 0 && (
@@ -124,6 +127,8 @@ export default function StoreOrderHistoryPage() {
         {orders.map((order, i) => {
           const isChecked = checkedIds.has(order.id);
           const isDelivery = order.orderType === "delivery";
+          const isPrepared =
+            order.orderStatus === "ready" || order.orderStatus === "completed";
 
           return (
             <motion.div
@@ -132,10 +137,12 @@ export default function StoreOrderHistoryPage() {
               animate={{ opacity: 1 }}
               transition={{ delay: i * 0.03 }}
               onClick={() => setSelectedOrder(order)}
-              className={`grid grid-cols-[40px_1.2fr_1.5fr_1.5fr_50px_1fr_80px] px-4 py-3 items-center border-t border-gray-100 cursor-pointer transition-colors ${
-                isDelivery
-                  ? "bg-pink-50 hover:bg-pink-100"
-                  : "hover:bg-gray-50"
+              className={`grid grid-cols-[40px_1.2fr_1.5fr_1.5fr_50px_1fr_100px] px-4 py-3 items-center border-t border-gray-100 cursor-pointer transition-colors ${
+                isPrepared
+                  ? "hover:bg-gray-50"
+                  : isDelivery
+                    ? "bg-pink-50 hover:bg-pink-100"
+                    : "hover:bg-gray-50"
               }`}
             >
               <div
@@ -195,15 +202,15 @@ export default function StoreOrderHistoryPage() {
                 </div>
               </div>
 
-              <div className="flex justify-center">
+              <div className="flex justify-center pointer-events-none">
                 <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold ${
-                    (order.orderStatus === "ready" || order.orderStatus === "completed")
+                  className={`min-w-[56px] text-sm font-bold px-3 py-2 rounded-lg ${
+                    isPrepared
                       ? "bg-amber-400 text-white"
-                      : "bg-gray-200 text-gray-500"
+                      : "bg-gray-200 text-gray-700"
                   }`}
                 >
-                  {(order.orderStatus === "ready" || order.orderStatus === "completed") ? "済" : "未"}
+                  {isPrepared ? "済" : "未"}
                 </div>
               </div>
             </motion.div>

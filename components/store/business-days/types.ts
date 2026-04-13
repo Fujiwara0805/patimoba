@@ -4,6 +4,33 @@ export interface DaySchedule {
   isOpen: boolean;
   openTime: string;
   closeTime: string;
+  /** カレンダー日付セル用の一言（store_special_dates.reason 等） */
+  dailyNote?: string;
+}
+
+/** DBの time / timestamptz 文字列を HH:mm で表示（例: 10:00:00 → 10:00） */
+export function formatTimeHm(t: string | null | undefined): string {
+  if (t == null || String(t).trim() === "") return "";
+  const s = String(t).trim();
+  const parts = s.split(":");
+  if (parts.length >= 2) {
+    const h = parts[0].padStart(2, "0").slice(-2);
+    const m = parts[1].padStart(2, "0").slice(0, 2);
+    return `${h}:${m}`;
+  }
+  return s;
+}
+
+/** カレンダー用 10:00~19:00 形式 */
+export function formatTimeRange(
+  open: string | null | undefined,
+  close: string | null | undefined,
+  defaultOpen = "10:00",
+  defaultClose = "19:00"
+): string {
+  const o = formatTimeHm(open) || (open && String(open).trim()) || formatTimeHm(defaultOpen) || defaultOpen;
+  const c = formatTimeHm(close) || (close && String(close).trim()) || formatTimeHm(defaultClose) || defaultClose;
+  return `${o}~${c}`;
 }
 
 export interface ClosedDayRule {

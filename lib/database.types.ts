@@ -422,6 +422,7 @@ export type Database = {
         Row: {
           close_time: string | null
           created_at: string
+          daily_note: string | null
           id: string
           is_closed: boolean
           kitchen_cutoff_time: string | null
@@ -435,6 +436,7 @@ export type Database = {
         Insert: {
           close_time?: string | null
           created_at?: string
+          daily_note?: string | null
           id?: string
           is_closed?: boolean
           kitchen_cutoff_time?: string | null
@@ -448,6 +450,7 @@ export type Database = {
         Update: {
           close_time?: string | null
           created_at?: string
+          daily_note?: string | null
           id?: string
           is_closed?: boolean
           kitchen_cutoff_time?: string | null

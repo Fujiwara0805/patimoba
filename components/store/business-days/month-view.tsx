@@ -1,8 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { weekdayLabels, formatDateKey, isClosedByRule } from "./types";
+import { weekdayLabels, formatDateKey, isClosedByRule, formatTimeRange } from "./types";
 import type { DaySchedule, ClosedDayRule } from "./types";
+
+/** 日・土をやや狭くし、平日列を確保（曜日行と日付グリッドで共通） */
+const MONTH_GRID_COLS =
+  "[grid-template-columns:minmax(0,0.88fr)_repeat(5,minmax(0,1fr))_minmax(0,0.88fr)]";
 
 interface MonthViewProps {
   year: number;
@@ -10,10 +14,19 @@ interface MonthViewProps {
   schedules: Record<string, DaySchedule>;
   onDayClick: (y: number, m: number, d: number) => void;
   defaultOpenTime?: string;
+  defaultCloseTime?: string;
   closedDayRules?: ClosedDayRule[];
 }
 
-export function MonthView({ year, month, schedules, onDayClick, defaultOpenTime = "10:00", closedDayRules = [] }: MonthViewProps) {
+export function MonthView({
+  year,
+  month,
+  schedules,
+  onDayClick,
+  defaultOpenTime = "10:00",
+  defaultCloseTime = "19:00",
+  closedDayRules = [],
+}: MonthViewProps) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -41,19 +54,19 @@ export function MonthView({ year, month, schedules, onDayClick, defaultOpenTime 
 
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden">
-      <div className="grid grid-cols-7 bg-gray-100 border-b border-gray-300">
+      <div className={`grid bg-gray-100 border-b border-gray-300 ${MONTH_GRID_COLS}`}>
         {weekdayLabels.map((label, i) => (
           <div
             key={label}
-            className={`text-center text-xs font-bold py-2 ${
-              i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : "text-gray-600"
+            className={`text-center text-xs font-bold py-1 px-0.5 leading-none ${
+              i === 0 ? "text-red-500" : i === 6 ? "text-sky-600" : "text-gray-600"
             }`}
           >
             {label}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7">
+      <div className={`grid ${MONTH_GRID_COLS}`}>
         {cells.map((cell, i) => {
           const key = formatDateKey(cell.y, cell.m, cell.d);
           const schedule = schedules[key];
@@ -65,34 +78,47 @@ export function MonthView({ year, month, schedules, onDayClick, defaultOpenTime 
           return (
             <motion.div
               key={i}
-              whileHover={{ backgroundColor: "#FFF9C4" }}
+              whileHover={{ backgroundColor: "#e0f2fe" }}
               onClick={() => onDayClick(cell.y, cell.m, cell.d)}
-              className={`border-b border-r border-gray-200 min-h-[80px] p-1 cursor-pointer transition-colors ${
+              className={`border-b border-r border-gray-200 min-h-[118px] p-1.5 cursor-pointer transition-colors flex flex-col ${
                 cell.isCurrentMonth ? "" : "opacity-40"
-              } ${isSunday && cell.isCurrentMonth ? "bg-amber-50/30" : ""}`}
+              } ${isSunday && cell.isCurrentMonth ? "bg-sky-50/50" : ""}`}
             >
-              <div className={`text-xs font-medium mb-1 ${
-                isSunday ? "text-red-500" : dayOfWeek === 6 ? "text-blue-500" : "text-gray-700"
-              }`}>
+              <div
+                className={`text-sm font-semibold mb-1 tabular-nums ${
+                  isSunday ? "text-red-500" : dayOfWeek === 6 ? "text-sky-600" : "text-gray-800"
+                }`}
+              >
                 {cell.d}日
               </div>
               {cell.isCurrentMonth && isOpen && (() => {
-                const openT = schedule?.openTime || defaultOpenTime;
-                const closeT = schedule?.closeTime || "";
+                const range = formatTimeRange(
+                  schedule?.openTime ?? defaultOpenTime,
+                  schedule?.closeTime ?? defaultCloseTime,
+                  defaultOpenTime,
+                  defaultCloseTime
+                );
                 return (
-                  <div className={`text-[10px] px-1 py-0.5 rounded leading-tight ${
-                    schedule?.openTime ? "bg-red-500 text-white" : "bg-blue-400 text-white"
-                  }`}>
+                  <div className="text-xs px-1.5 py-1 rounded-md leading-snug shrink-0 bg-sky-500 text-white shadow-sm">
                     <div className="font-bold">営業日</div>
-                    <div>{openT}{closeT ? `〜${closeT}` : ""}</div>
+                    <div className="tabular-nums font-medium">{range}</div>
                   </div>
                 );
               })()}
               {cell.isCurrentMonth && !isOpen && (
-                <div className="text-[10px] px-1 py-0.5 rounded bg-amber-400 text-white">
+                <div className="text-xs px-1.5 py-1 rounded-md bg-amber-400 text-white shrink-0 font-semibold">
                   休業日
                 </div>
               )}
+              {cell.isCurrentMonth && schedule?.dailyNote?.trim() ? (
+                <p
+                  className={`text-[11px] mt-1 leading-snug line-clamp-2 flex-1 min-h-0 ${
+                    isOpen ? "text-gray-700" : "text-amber-900"
+                  }`}
+                >
+                  {schedule.dailyNote.trim()}
+                </p>
+              ) : null}
             </motion.div>
           );
         })}

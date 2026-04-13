@@ -17,6 +17,11 @@ import { useOrderMutations } from "@/hooks/use-order-mutations";
 
 const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
 
+type ConfirmAction = {
+  orderId: string;
+  toReady: boolean;
+};
+
 export default function StoreDashboardPage() {
   const { storeId } = useStoreContext();
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -28,7 +33,7 @@ export default function StoreDashboardPage() {
   const { updateOrderStatus } = useOrderMutations();
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [confirmOrderId, setConfirmOrderId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const dateRef = useRef<HTMLDivElement>(null);
 
@@ -36,14 +41,17 @@ export default function StoreDashboardPage() {
     selectedDate.getMonth() + 1
   }月${selectedDate.getDate()}日(${dayNames[selectedDate.getDay()]})`;
 
-  const handleConfirmPrepared = async () => {
-    if (!confirmOrderId || confirmLoading) return;
+  const handleConfirm = async () => {
+    if (!confirmAction || confirmLoading) return;
     setConfirmLoading(true);
     try {
-      await updateOrderStatus(confirmOrderId, "ready");
+      await updateOrderStatus(
+        confirmAction.orderId,
+        confirmAction.toReady ? "ready" : "pending"
+      );
       await refetchOrders();
     } finally {
-      setConfirmOrderId(null);
+      setConfirmAction(null);
       setConfirmLoading(false);
     }
   };
@@ -151,14 +159,25 @@ export default function StoreDashboardPage() {
             表示する注文はありません
           </div>
         ) : (
-          orders.map((order, i) => (
+          orders.map((order, i) => {
+            const isPrepared =
+              order.orderStatus === "ready" || order.orderStatus === "completed";
+            const isDelivery = order.orderType === "delivery";
+
+            return (
             <motion.div
               key={order.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 10 }}
               transition={{ delay: i * 0.05 }}
-              className="grid grid-cols-[1fr_1fr_1.5fr_auto_1fr_120px] px-4 py-3 items-center border-t border-gray-100 bg-pink-50"
+              className={`grid grid-cols-[1fr_1fr_1.5fr_auto_1fr_120px] px-4 py-3 items-center border-t border-gray-100 ${
+                isPrepared
+                  ? "bg-white"
+                  : isDelivery
+                    ? "bg-pink-50"
+                    : "bg-white"
+              }`}
             >
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center">
@@ -168,7 +187,11 @@ export default function StoreDashboardPage() {
               </div>
 
               <div className="text-sm text-gray-600">
-                {order.pickupTime || "-"}
+                {order.pickupTime ? (
+                  <div>{order.pickupTime.slice(0, 5)}</div>
+                ) : (
+                  "-"
+                )}
               </div>
 
               <div className="text-sm">
@@ -191,7 +214,10 @@ export default function StoreDashboardPage() {
                   className={`text-xs ${
                     order.paymentStatus === "決済済み"
                       ? "text-green-600"
-                      : "text-blue-600"
+                      : order.paymentStatus === "店頭支払い" ||
+                          order.paymentStatus === "銀行振込"
+                        ? "text-blue-600"
+                        : "text-gray-500"
                   }`}
                 >
                   {order.paymentStatus}
@@ -202,26 +228,36 @@ export default function StoreDashboardPage() {
                 <motion.button
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.96 }}
-                  onClick={() => setConfirmOrderId(order.id)}
-                  className="bg-amber-400 hover:bg-amber-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors"
+                  onClick={() =>
+                    setConfirmAction({
+                      orderId: order.id,
+                      toReady: !isPrepared,
+                    })
+                  }
+                  className={`min-w-[56px] text-sm font-bold px-3 py-2 rounded-lg transition-colors ${
+                    isPrepared
+                      ? "bg-amber-400 hover:bg-amber-500 text-white"
+                      : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                  }`}
                 >
-                  準備完了
+                  {isPrepared ? "済" : "未"}
                 </motion.button>
               </div>
             </motion.div>
-          ))
+            );
+          })
         )}
       </div>
 
       <AnimatePresence>
-        {confirmOrderId && (
+        {confirmAction && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.4 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black z-50"
-              onClick={() => !confirmLoading && setConfirmOrderId(null)}
+              onClick={() => !confirmLoading && setConfirmAction(null)}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -231,16 +267,20 @@ export default function StoreDashboardPage() {
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl z-[60] p-6 w-[90%] max-w-sm"
             >
               <h3 className="text-base font-bold text-center mb-2">
-                準備完了にします
+                {confirmAction.toReady
+                  ? "準備完了にします"
+                  : "準備未完了に戻す"}
               </h3>
               <p className="text-xs text-gray-500 text-center mb-5">
-                この注文を準備完了にして一覧から外しますか？
+                {confirmAction.toReady
+                  ? "この注文を準備完了にしますか？"
+                  : "この注文を未準備に戻しますか？"}
               </p>
               <div className="flex gap-3">
                 <button
                   type="button"
                   disabled={confirmLoading}
-                  onClick={() => setConfirmOrderId(null)}
+                  onClick={() => setConfirmAction(null)}
                   className="flex-1 border-2 border-gray-300 text-gray-700 font-bold py-2.5 rounded-full text-sm hover:bg-gray-50 transition-colors disabled:opacity-60"
                 >
                   キャンセル
@@ -248,8 +288,12 @@ export default function StoreDashboardPage() {
                 <button
                   type="button"
                   disabled={confirmLoading}
-                  onClick={handleConfirmPrepared}
-                  className="flex-1 bg-amber-400 hover:bg-amber-500 text-white font-bold py-2.5 rounded-full text-sm flex items-center justify-center gap-1 disabled:opacity-60"
+                  onClick={handleConfirm}
+                  className={`flex-1 font-bold py-2.5 rounded-full text-sm flex items-center justify-center gap-1 disabled:opacity-60 text-white ${
+                    confirmAction.toReady
+                      ? "bg-amber-400 hover:bg-amber-500"
+                      : "bg-gray-500 hover:bg-gray-600"
+                  }`}
                 >
                   {confirmLoading && (
                     <Loader2 className="w-4 h-4 animate-spin" />

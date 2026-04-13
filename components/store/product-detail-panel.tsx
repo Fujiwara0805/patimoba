@@ -1,11 +1,17 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2, Check, Trash2, ImagePlus, Plus } from "lucide-react";
+import { X, Loader2, Check, Trash2, ImagePlus, Plus, GripVertical } from "lucide-react";
 import { useProductTypes } from "@/hooks/use-product-types";
 import { uploadProductImage, deleteProductImage } from "@/lib/upload-image";
 import type { ProductRegistration, ProductCustomOption } from "@/hooks/use-product-registrations";
+import { ProductCustomOptionPresetChips } from "@/components/store/product-custom-option-preset-chips";
+
+const PANEL_WIDTH_KEY = "patimoba-store-product-panel-width";
+const PANEL_MIN_W = 260;
+const PANEL_MAX_W = 720;
+const PANEL_DEFAULT_W = 320;
 
 interface ProductDetailPanelProps {
   product: ProductRegistration;
@@ -50,6 +56,25 @@ export function ProductDetailPanel({
   const [uploading, setUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT_W);
+  const dragStartRef = useRef<{ x: number; w: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = localStorage.getItem(PANEL_WIDTH_KEY);
+    if (raw == null) return;
+    const n = parseInt(raw, 10);
+    if (!Number.isNaN(n)) {
+      setPanelWidth(Math.min(PANEL_MAX_W, Math.max(PANEL_MIN_W, n)));
+    }
+  }, []);
+
+  const persistPanelWidth = useCallback((w: number) => {
+    const clamped = Math.min(PANEL_MAX_W, Math.max(PANEL_MIN_W, w));
+    setPanelWidth(clamped);
+    localStorage.setItem(PANEL_WIDTH_KEY, String(clamped));
+  }, []);
 
   useEffect(() => {
     setName(product.name);
@@ -141,12 +166,42 @@ export function ProductDetailPanel({
 
   return (
     <motion.div
-      initial={{ x: 300, opacity: 0 }}
+      initial={{ x: 48, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 300, opacity: 0 }}
-      transition={{ type: "spring", damping: 25, stiffness: 300 }}
-      className="w-[280px] bg-white border-l border-gray-200 p-5 overflow-y-auto shrink-0 h-full"
+      exit={{ x: 48, opacity: 0 }}
+      transition={{ type: "spring", damping: 28, stiffness: 320 }}
+      className="flex h-full shrink-0 bg-white border-l border-gray-200 shadow-[inset_1px_0_0_rgba(0,0,0,0.04)]"
+      style={{ width: panelWidth }}
     >
+      <button
+        type="button"
+        aria-label="パネル幅を調整"
+        title="ドラッグで幅を変更"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          dragStartRef.current = { x: e.clientX, w: panelWidth };
+          document.body.style.cursor = "col-resize";
+          document.body.style.userSelect = "none";
+          const onMove = (ev: MouseEvent) => {
+            const d = dragStartRef.current;
+            if (!d) return;
+            persistPanelWidth(d.w + (ev.clientX - d.x));
+          };
+          const onUp = () => {
+            dragStartRef.current = null;
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+          };
+          window.addEventListener("mousemove", onMove);
+          window.addEventListener("mouseup", onUp);
+        }}
+        className="group w-3 shrink-0 flex flex-col items-center justify-center cursor-col-resize border-r border-transparent hover:border-amber-200 hover:bg-amber-50/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
+      >
+        <GripVertical className="w-3.5 h-3.5 text-gray-300 group-hover:text-amber-500 transition-colors" />
+      </button>
+      <div className="flex-1 min-w-0 overflow-y-auto p-5">
       <input
         ref={fileInputRef}
         type="file"
@@ -241,14 +296,29 @@ export function ProductDetailPanel({
         </div>
 
         <div>
-          <label className="text-sm font-bold block mb-1">予約締切日数</label>
+          <label className="text-sm font-bold block mb-1">最大個数（/日）</label>
           <input
             type="number"
-            value={prepDays}
-            onChange={(e) => setPrepDays(e.target.value)}
-            min={0}
+            value={dailyMax}
+            onChange={(e) => setDailyMax(e.target.value)}
+            min={1}
+            placeholder="空欄は上限なし（一覧は「-」）"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition-all"
           />
+        </div>
+
+        <div>
+          <label className="text-sm font-bold block mb-1">準備日数</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={prepDays}
+              onChange={(e) => setPrepDays(e.target.value)}
+              min={0}
+              className="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition-all"
+            />
+            <span className="text-sm text-gray-600 shrink-0">日</span>
+          </div>
         </div>
 
         <div>
@@ -257,17 +327,6 @@ export function ProductDetailPanel({
             type="number"
             value={maxPerOrder}
             onChange={(e) => setMaxPerOrder(e.target.value)}
-            min={1}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition-all"
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-bold block mb-1">1日の最大注文数</label>
-          <input
-            type="number"
-            value={dailyMax}
-            onChange={(e) => setDailyMax(e.target.value)}
             min={1}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition-all"
           />
@@ -310,9 +369,15 @@ export function ProductDetailPanel({
               }
               className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-0.5"
             >
-              <Plus className="w-3 h-3" /> 追加
+              <Plus className="w-3 h-3" /> 空のオプションを追加
             </button>
           </div>
+          <ProductCustomOptionPresetChips
+            compact
+            className="mb-3 pb-3 border-b border-gray-100"
+            customOptions={customOptions}
+            onAdd={(opt) => setCustomOptions((prev) => [...prev, opt])}
+          />
           <div className="space-y-3">
             {customOptions.map((opt, oi) => (
               <div key={oi} className="border border-gray-200 rounded-lg p-2 space-y-2">
@@ -466,6 +531,7 @@ export function ProductDetailPanel({
           <Trash2 className="w-4 h-4" />
           商品を削除
         </motion.button>
+      </div>
       </div>
 
       {/* 削除確認モーダル */}

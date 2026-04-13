@@ -12,13 +12,16 @@ import {
   getWeekStartDate,
   formatDateKey,
   timeOptions,
+  formatTimeHm,
+  formatTimeRange,
+  isClosedByRule,
 } from "@/components/store/business-days/types";
 import { useStoreContext } from "@/lib/store-context";
 import { useBusinessDays } from "@/hooks/use-business-days";
 import { supabase } from "@/lib/supabase";
 
 export default function BusinessDaysPage() {
-  const { storeId } = useStoreContext();
+  const { storeId, storeName } = useStoreContext();
   const { businessDays, loading, saveMonth, addBusinessDay, updateBusinessDay, deleteBusinessDay, refetch } = useBusinessDays(storeId);
 
   const today = new Date();
@@ -33,9 +36,11 @@ export default function BusinessDaysPage() {
   const [editDate, setEditDate] = useState<string>("");
   const [editOpen, setEditOpen] = useState("");
   const [editClose, setEditClose] = useState("");
+  const [editNote, setEditNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
@@ -49,34 +54,72 @@ export default function BusinessDaysPage() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const handleExportImage = async (mode: "post" | "story") => {
+  type ExportFormat = "square" | "landscape" | "portrait" | "natural";
+
+  /** カレンダー領域を画像化（正方形・横長・縦長・原寸のいずれか） */
+  const handleExportImage = async (format: ExportFormat) => {
     if (!calendarRef.current) return;
     setExporting(true);
     setShowExportMenu(false);
+    setSaveError(null);
     try {
-      const width = mode === "post" ? 1080 : 1080;
-      const height = mode === "post" ? 1080 : 1920;
       const node = calendarRef.current;
-      const scale = Math.min(width / node.offsetWidth, height / node.offsetHeight);
-      const dataUrl = await toJpeg(node, {
-        quality: 0.95,
+      const w = Math.max(node.offsetWidth, 1);
+      const h = Math.max(node.offsetHeight, 1);
+
+      const optsBase = {
+        quality: 0.95 as const,
         backgroundColor: "#ffffff",
-        canvasWidth: width,
-        canvasHeight: height,
-        pixelRatio: 2,
-        style: {
-          transform: `scale(${scale})`,
-          transformOrigin: "top left",
-          width: `${node.offsetWidth}px`,
-          height: `${node.offsetHeight}px`,
-        },
-      });
+        pixelRatio: 2 as const,
+      };
+
+      let dataUrl: string;
+      let filenameSuffix: string;
+
+      if (format === "natural") {
+        dataUrl = await toJpeg(node, {
+          ...optsBase,
+        });
+        filenameSuffix = "natural";
+      } else {
+        let canvasWidth: number;
+        let canvasHeight: number;
+        let scale: number;
+        if (format === "square") {
+          canvasWidth = canvasHeight = 1080;
+          scale = 1080 / Math.max(w, h, 1);
+          filenameSuffix = "1080-square";
+        } else if (format === "landscape") {
+          canvasWidth = 1920;
+          canvasHeight = 1080;
+          scale = Math.min(1920 / w, 1080 / h);
+          filenameSuffix = "1920x1080";
+        } else {
+          canvasWidth = 1080;
+          canvasHeight = 1920;
+          scale = Math.min(1080 / w, 1920 / h);
+          filenameSuffix = "1080x1920";
+        }
+        dataUrl = await toJpeg(node, {
+          ...optsBase,
+          canvasWidth,
+          canvasHeight,
+          style: {
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            width: `${w}px`,
+            height: `${h}px`,
+          },
+        });
+      }
+
       const link = document.createElement("a");
-      link.download = `business-days-${year}-${month + 1}-${mode}.jpg`;
+      link.download = `business-days-${year}-${month + 1}-${filenameSuffix}.jpg`;
       link.href = dataUrl;
       link.click();
     } catch (e) {
       console.error(e);
+      setSaveError("画像の保存に失敗しました。もう一度お試しください。");
     }
     setExporting(false);
   };
@@ -109,8 +152,8 @@ export default function BusinessDaysPage() {
         // 営業日の最初のレコードからopen/close timeを取得
         const openDay = bhData.find((r: any) => !r.is_closed);
         if (openDay) {
-          setStoreOpenTime(openDay.open_time || "10:00");
-          setStoreCloseTime(openDay.close_time || "19:00");
+          setStoreOpenTime(formatTimeHm(openDay.open_time) || "10:00");
+          setStoreCloseTime(formatTimeHm(openDay.close_time) || "19:00");
         }
         // 定休日を抽出
         const closed = bhData.filter((r: any) => r.is_closed);
@@ -139,8 +182,9 @@ export default function BusinessDaysPage() {
     for (const bd of businessDays) {
       map[bd.date] = {
         isOpen: bd.isOpen,
-        openTime: bd.openTime || storeOpenTime,
-        closeTime: bd.closeTime || storeCloseTime,
+        openTime: formatTimeHm(bd.openTime) || storeOpenTime,
+        closeTime: formatTimeHm(bd.closeTime) || storeCloseTime,
+        dailyNote: bd.dailyNote ?? "",
       };
     }
     setSchedules(map);
@@ -183,11 +227,19 @@ export default function BusinessDaysPage() {
   const handleDayClick = useCallback((y: number, m: number, d: number) => {
     const dateKey = formatDateKey(y, m, d);
     setEditDate(dateKey);
-    setEditOpen(schedules[dateKey]?.openTime || storeOpenTime);
-    setEditClose(schedules[dateKey]?.closeTime || storeCloseTime);
+    setSaveError(null);
+    const s = schedules[dateKey];
+    const inferredOpen = s ? s.isOpen : !isClosedByRule(closedDayRules, y, m, d);
+    setEditOpen(
+      inferredOpen ? (s?.openTime || storeOpenTime) : storeOpenTime
+    );
+    setEditClose(
+      inferredOpen ? (s?.closeTime || storeCloseTime) : storeCloseTime
+    );
+    setEditNote(s?.dailyNote ?? "");
     setShowEditPanel(true);
     setYear(y); setMonth(m); setSelectedDay(d);
-  }, [schedules, storeOpenTime, storeCloseTime]);
+  }, [schedules, storeOpenTime, storeCloseTime, closedDayRules]);
 
   const handleUpdateSchedule = useCallback(
     (key: string, schedule: DaySchedule) => {
@@ -198,16 +250,42 @@ export default function BusinessDaysPage() {
   const handleSaveTimeChange = async () => {
     if (!storeId || !editDate) return;
     setSaving(true);
+    setSaveError(null);
     try {
+      const note = editNote.trim() || null;
+      const openT = (editOpen && editOpen.trim()) || storeOpenTime;
+      const closeT = (editClose && editClose.trim()) || storeCloseTime;
       const existing = businessDays.find((bd) => bd.date === editDate);
       if (existing) {
-        await updateBusinessDay(existing.id, { openTime: editOpen, closeTime: editClose, isOpen: true });
+        await updateBusinessDay(existing.id, {
+          openTime: openT,
+          closeTime: closeT,
+          isOpen: true,
+          dailyNote: note,
+        });
       } else {
-        await addBusinessDay({ date: editDate, openTime: editOpen, closeTime: editClose, isOpen: true, storeId });
+        await addBusinessDay({
+          date: editDate,
+          openTime: openT,
+          closeTime: closeT,
+          isOpen: true,
+          storeId,
+          dailyNote: note,
+        });
       }
+      setSchedules((prev) => ({
+        ...prev,
+        [editDate]: {
+          isOpen: true,
+          openTime: openT,
+          closeTime: closeT,
+          dailyNote: note ?? "",
+        },
+      }));
       setShowEditPanel(false);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setSaveError(e?.message || "保存に失敗しました。通信状況と権限をご確認ください。");
     }
     setSaving(false);
   };
@@ -215,16 +293,40 @@ export default function BusinessDaysPage() {
   const handleSetClosed = async () => {
     if (!storeId || !editDate) return;
     setSaving(true);
+    setSaveError(null);
     try {
+      const note = editNote.trim() || null;
       const existing = businessDays.find((bd) => bd.date === editDate);
       if (existing) {
-        await updateBusinessDay(existing.id, { isOpen: false });
+        await updateBusinessDay(existing.id, {
+          isOpen: false,
+          openTime: null,
+          closeTime: null,
+          dailyNote: note,
+        });
       } else {
-        await addBusinessDay({ date: editDate, openTime: "", closeTime: "", isOpen: false, storeId });
+        await addBusinessDay({
+          date: editDate,
+          openTime: null,
+          closeTime: null,
+          isOpen: false,
+          storeId,
+          dailyNote: note,
+        });
       }
+      setSchedules((prev) => ({
+        ...prev,
+        [editDate]: {
+          isOpen: false,
+          openTime: storeOpenTime,
+          closeTime: storeCloseTime,
+          dailyNote: note ?? "",
+        },
+      }));
       setShowEditPanel(false);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setSaveError(e?.message || "保存に失敗しました。通信状況と権限をご確認ください。");
     }
     setSaving(false);
   };
@@ -234,12 +336,24 @@ export default function BusinessDaysPage() {
     setSaving(true);
     try {
       const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const entries: Array<{ date: string; isClosed: boolean; openTime: string | null; closeTime: string | null }> = [];
+      const entries: Array<{
+        date: string
+        isClosed: boolean
+        openTime: string | null
+        closeTime: string | null
+        dailyNote?: string | null
+      }> = [];
       for (let d = 1; d <= daysInMonth; d++) {
         const key = formatDateKey(year, month, d);
         const s = schedules[key];
         if (s) {
-          entries.push({ date: key, isClosed: !s.isOpen, openTime: s.openTime, closeTime: s.closeTime });
+          entries.push({
+            date: key,
+            isClosed: !s.isOpen,
+            openTime: s.openTime,
+            closeTime: s.closeTime,
+            dailyNote: s.dailyNote?.trim() || null,
+          });
         }
       }
       await saveMonth(storeId, year, month, entries);
@@ -326,27 +440,43 @@ export default function BusinessDaysPage() {
               className="border border-amber-500 text-amber-600 hover:bg-amber-50 font-bold px-4 py-3 rounded-xl transition-colors text-sm disabled:opacity-50 flex items-center gap-2"
             >
               {exporting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Instagram用画像
+              画像で保存
             </motion.button>
             <AnimatePresence>
-              {showExportMenu && (
+              {showExportMenu && !exporting && (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
-                  className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-20 w-[200px] overflow-hidden"
+                  className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-20 w-[240px] overflow-hidden"
                 >
                   <button
-                    onClick={() => handleExportImage("post")}
+                    type="button"
+                    onClick={() => void handleExportImage("square")}
                     className="w-full text-left px-4 py-2.5 text-sm hover:bg-amber-50 transition-colors"
                   >
-                    投稿サイズ (1080×1080)
+                    正方形 1080×1080
                   </button>
                   <button
-                    onClick={() => handleExportImage("story")}
+                    type="button"
+                    onClick={() => void handleExportImage("landscape")}
                     className="w-full text-left px-4 py-2.5 text-sm hover:bg-amber-50 transition-colors border-t border-gray-100"
                   >
-                    ストーリーズ (1080×1920)
+                    横長 1920×1080
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleExportImage("portrait")}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-amber-50 transition-colors border-t border-gray-100"
+                  >
+                    縦長 1080×1920
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleExportImage("natural")}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-amber-50 transition-colors border-t border-gray-100 text-gray-700"
+                  >
+                    画面サイズのまま（高解像度）
                   </button>
                 </motion.div>
               )}
@@ -389,13 +519,24 @@ export default function BusinessDaysPage() {
 
         <div ref={calendarRef} className="bg-white p-4 rounded-lg">
           <div className="text-center mb-3">
+            {storeName ? (
+              <p className="text-lg font-bold text-gray-800 mb-1">{storeName}</p>
+            ) : null}
             <h3 className="text-2xl font-bold">{year}年 {month + 1}月 営業日カレンダー</h3>
-            <div className="text-sm text-gray-600 mt-1">
-              OPEN {storeOpenTime} / CLOSE {storeCloseTime}
+            <div className="text-base text-gray-600 mt-1 font-medium tabular-nums">
+              {formatTimeRange(storeOpenTime, storeCloseTime)}
             </div>
           </div>
         {viewMode === "month" && (
-          <MonthView year={year} month={month} schedules={schedules} onDayClick={handleDayClick} defaultOpenTime={storeOpenTime} closedDayRules={closedDayRules} />
+          <MonthView
+            year={year}
+            month={month}
+            schedules={schedules}
+            onDayClick={handleDayClick}
+            defaultOpenTime={storeOpenTime}
+            defaultCloseTime={storeCloseTime}
+            closedDayRules={closedDayRules}
+          />
         )}
         {viewMode === "week" && (
           <WeekView weekStart={weekStart} schedules={schedules} onDayClick={handleDayClick} defaultOpenTime={storeOpenTime} defaultCloseTime={storeCloseTime} closedDayRules={closedDayRules} />
@@ -452,13 +593,31 @@ export default function BusinessDaysPage() {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="text-sm font-medium block mb-1">一言（カレンダーに表示）</label>
+                  <textarea
+                    value={editNote}
+                    onChange={(e) => setEditNote(e.target.value)}
+                    rows={2}
+                    maxLength={80}
+                    placeholder="例: ケーキの日、定休のためお休み など"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white resize-none"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-0.5">最大80文字</p>
+                </div>
               </div>
+
+              {saveError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-2 py-1.5 mb-3">
+                  {saveError}
+                </p>
+              )}
 
               <div className="space-y-2">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={handleSaveTimeChange}
+                  onClick={() => void handleSaveTimeChange()}
                   disabled={saving}
                   className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-lg transition-colors text-sm disabled:opacity-50"
                 >
@@ -467,7 +626,7 @@ export default function BusinessDaysPage() {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={handleSetClosed}
+                  onClick={() => void handleSetClosed()}
                   disabled={saving}
                   className="w-full bg-amber-400 hover:bg-amber-500 text-white font-bold py-2.5 rounded-lg transition-colors text-sm disabled:opacity-50"
                 >

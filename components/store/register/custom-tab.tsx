@@ -6,6 +6,7 @@ import { X, Plus, Loader2, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { CANDLE_OPTIONS } from "@/lib/constants/product-master";
+import { STORE_WHOLE_CAKE_OPTION_PRESETS } from "@/lib/constants/store-whole-cake-option-presets";
 
 type SubTab = "基本" | "ろうそく" | "オプション";
 
@@ -108,17 +109,68 @@ export function CustomTab() {
     setSaving(false);
   };
 
-  const handleAddOption = async () => {
-    // オプションはコード定数管理に移行しました
-    showToast("オプションはコード定数で管理されています");
+  const newOptionId = () =>
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `opt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+  const handleAddOption = () => {
+    if (!newName.trim()) {
+      showToast("名前を入力してください");
+      return;
+    }
+    const priceNum = parseInt(newPrice.replace(/[^\d]/g, ""), 10) || 0;
+    setOptions((prev) => [
+      ...prev,
+      {
+        id: newOptionId(),
+        name: newName.trim(),
+        price: priceNum,
+        multiple_allowed: newMultiple,
+      },
+    ]);
+    setNewName("");
+    setNewPrice("");
+    setNewMultiple(false);
+    showToast("追加しました");
   };
 
-  const handleUpdateOption = async (id: string) => {
-    showToast("オプションはコード定数で管理されています");
+  const handleAddPresetOption = (preset: (typeof STORE_WHOLE_CAKE_OPTION_PRESETS)[number]) => {
+    setOptions((prev) => {
+      if (prev.some((o) => o.name === preset.name)) return prev;
+      return [
+        ...prev,
+        {
+          id: newOptionId(),
+          name: preset.name,
+          price: preset.price,
+          multiple_allowed: preset.multiple_allowed,
+        },
+      ];
+    });
   };
 
-  const handleDeleteOption = async (id: string) => {
-    showToast("オプションはコード定数で管理されています");
+  const handleUpdateOption = (id: string) => {
+    if (!editName.trim()) {
+      showToast("名前を入力してください");
+      return;
+    }
+    const priceNum = parseInt(editPrice.replace(/[^\d]/g, ""), 10) || 0;
+    setOptions((prev) =>
+      prev.map((o) =>
+        o.id === id
+          ? { ...o, name: editName.trim(), price: priceNum, multiple_allowed: editMultiple }
+          : o
+      )
+    );
+    setEditId(null);
+    showToast("更新しました");
+  };
+
+  const handleDeleteOption = (id: string) => {
+    setOptions((prev) => prev.filter((o) => o.id !== id));
+    if (editId === id) setEditId(null);
+    showToast("削除しました");
   };
 
   const startEdit = (item: { id: string; name: string; price: number; multiple_allowed?: boolean }) => {
@@ -457,6 +509,38 @@ export function CustomTab() {
                 animate={{ opacity: 1 }}
                 className="space-y-3"
               >
+                <div>
+                  <p className="text-xs font-bold text-gray-700 mb-2">
+                    定番オプション（タップで追加）
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {STORE_WHOLE_CAKE_OPTION_PRESETS.map((preset) => {
+                      const added = options.some((o) => o.name === preset.name);
+                      return (
+                        <motion.button
+                          key={preset.name}
+                          type="button"
+                          whileHover={added ? undefined : { scale: 1.03 }}
+                          whileTap={added ? undefined : { scale: 0.97 }}
+                          disabled={added}
+                          onClick={() => handleAddPresetOption(preset)}
+                          className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${
+                            added
+                              ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                          }`}
+                        >
+                          {!added && <Plus className="w-3.5 h-3.5 shrink-0" />}
+                          {preset.name}
+                          {added && (
+                            <span className="text-[10px] font-normal">追加済</span>
+                          )}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <AnimatePresence mode="popLayout">
                   {options.map((item) => (
                     <motion.div
@@ -497,7 +581,7 @@ export function CustomTab() {
                             disabled={saving}
                             className="bg-amber-400 hover:bg-amber-500 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
                           >
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "保存"}
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "確定"}
                           </motion.button>
                           <button
                             onClick={() => setEditId(null)}
@@ -595,19 +679,29 @@ export function CustomTab() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="w-72"
+            className="w-72 shrink-0"
           >
+            <p className="text-xs font-bold text-gray-600 mb-2">
+              {subTab === "ろうそく" ? "マスタ一覧（参照）" : "追加済みオプション"}
+            </p>
             <div className="flex flex-wrap gap-2">
-              {(subTab === "ろうそく" ? candles : options).map((item) => (
-                <motion.span
-                  key={item.id}
-                  layout
-                  whileHover={{ scale: 1.05 }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white shadow-sm cursor-default"
-                >
-                  {item.name}
-                </motion.span>
-              ))}
+              {(subTab === "ろうそく" ? candles : options).length === 0 &&
+              subTab === "オプション" ? (
+                <p className="text-xs text-gray-400">
+                  左の定番をタップするとここに表示されます
+                </p>
+              ) : (
+                (subTab === "ろうそく" ? candles : options).map((item) => (
+                  <motion.span
+                    key={item.id}
+                    layout
+                    whileHover={{ scale: 1.05 }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm bg-white shadow-sm cursor-default"
+                  >
+                    {item.name}
+                  </motion.span>
+                ))
+              )}
             </div>
           </motion.div>
         )}

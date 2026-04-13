@@ -3,6 +3,21 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 
+/** Postgres time 向けに HH:mm → HH:mm:ss（400 回避） */
+function toPgTime(v: string | null | undefined): string | null {
+  if (v == null || String(v).trim() === "") return null
+  const t = String(v).trim()
+  if (/^\d{1,2}:\d{2}:\d{2}$/.test(t)) {
+    const [h, m, s] = t.split(":")
+    return `${h.padStart(2, "0")}:${m.padStart(2, "0")}:${s.padStart(2, "0")}`
+  }
+  if (/^\d{1,2}:\d{2}$/.test(t)) {
+    const [h, m] = t.split(":")
+    return `${h.padStart(2, "0")}:${m.padStart(2, "0")}:00`
+  }
+  return t
+}
+
 export interface SpecialDate {
   id: string
   targetDate: string
@@ -10,6 +25,8 @@ export interface SpecialDate {
   closeTime: string | null
   isClosed: boolean
   reason: string | null
+  /** カレンダー用の一言 */
+  dailyNote: string | null
   storeId: string
 }
 
@@ -44,6 +61,8 @@ export function useBusinessDays(storeId?: string) {
           closeTime: row.close_time,
           isClosed: row.is_closed ?? false,
           reason: row.reason,
+          // daily_note 列が無い環境でも動くよう、一言は reason を主に使う（あれば daily_note も参照）
+          dailyNote: (row.daily_note ?? row.reason) ?? null,
           storeId: String(row.store_id),
         }))
       )
@@ -56,12 +75,14 @@ export function useBusinessDays(storeId?: string) {
   }, [fetchSpecialDates])
 
   const addSpecialDate = async (day: Omit<SpecialDate, "id">) => {
+    const note = day.dailyNote ?? day.reason ?? null
     const { error: err } = await supabase.from("store_special_dates").insert({
       target_date: day.targetDate,
-      open_time: day.openTime ?? null,
-      close_time: day.closeTime ?? null,
+      open_time: toPgTime(day.openTime),
+      close_time: toPgTime(day.closeTime),
       is_closed: day.isClosed,
-      reason: day.reason ?? null,
+      // 一言は reason に保存（daily_note 未マイグレーションの DB でも 400 にならない）
+      reason: note,
       store_id: day.storeId,
     })
     if (err) throw err
@@ -71,10 +92,11 @@ export function useBusinessDays(storeId?: string) {
   const updateSpecialDate = async (id: string, updates: Partial<SpecialDate>) => {
     const payload: any = {}
     if (updates.targetDate !== undefined) payload.target_date = updates.targetDate
-    if (updates.openTime !== undefined) payload.open_time = updates.openTime ?? null
-    if (updates.closeTime !== undefined) payload.close_time = updates.closeTime ?? null
+    if (updates.openTime !== undefined) payload.open_time = toPgTime(updates.openTime)
+    if (updates.closeTime !== undefined) payload.close_time = toPgTime(updates.closeTime)
     if (updates.isClosed !== undefined) payload.is_closed = updates.isClosed
     if (updates.reason !== undefined) payload.reason = updates.reason
+    if (updates.dailyNote !== undefined) payload.reason = updates.dailyNote
 
     const { error: err } = await supabase
       .from("store_special_dates")
@@ -103,6 +125,7 @@ export function useBusinessDays(storeId?: string) {
       openTime: string | null
       closeTime: string | null
       reason?: string | null
+      dailyNote?: string | null
     }>
   ) => {
     const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`
@@ -125,10 +148,10 @@ export function useBusinessDays(storeId?: string) {
     const rows = entries.map((entry) => ({
       store_id: targetStoreId,
       target_date: entry.date,
-      open_time: entry.isClosed ? null : (entry.openTime ?? null),
-      close_time: entry.isClosed ? null : (entry.closeTime ?? null),
+      open_time: entry.isClosed ? null : toPgTime(entry.openTime),
+      close_time: entry.isClosed ? null : toPgTime(entry.closeTime),
       is_closed: entry.isClosed,
-      reason: entry.reason ?? null,
+      reason: entry.dailyNote ?? entry.reason ?? null,
     }))
 
     const { error: insErr } = await supabase.from("store_special_dates").insert(rows)
@@ -146,6 +169,7 @@ export function useBusinessDays(storeId?: string) {
         closeTime: sd.closeTime,
         isOpen: !sd.isClosed,
         storeId: sd.storeId,
+        dailyNote: sd.dailyNote,
       })),
     [specialDates]
   )
@@ -158,13 +182,21 @@ export function useBusinessDays(storeId?: string) {
     error,
     refetch: fetchSpecialDates,
     addSpecialDate,
-    addBusinessDay: async (day: { date: string; openTime: string | null; closeTime: string | null; isOpen: boolean; storeId: string }) => {
+    addBusinessDay: async (day: {
+      date: string
+      openTime: string | null
+      closeTime: string | null
+      isOpen: boolean
+      storeId: string
+      dailyNote?: string | null
+    }) => {
       await addSpecialDate({
         targetDate: day.date,
         openTime: day.openTime,
         closeTime: day.closeTime,
         isClosed: !day.isOpen,
         reason: null,
+        dailyNote: day.dailyNote ?? null,
         storeId: day.storeId,
       })
     },
@@ -174,6 +206,7 @@ export function useBusinessDays(storeId?: string) {
         openTime: updates.openTime,
         closeTime: updates.closeTime,
         isClosed: updates.isOpen !== undefined ? !updates.isOpen : undefined,
+        dailyNote: updates.dailyNote,
       })
     },
     deleteBusinessDay: deleteSpecialDate,

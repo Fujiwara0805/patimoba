@@ -10,6 +10,7 @@ import { useProductTypes } from "@/hooks/use-product-types";
 import { useProductCategories } from "@/hooks/use-product-categories";
 import { CANDLE_OPTIONS } from "@/lib/constants/product-master";
 import { uploadProductImage, deleteProductImage } from "@/lib/upload-image";
+import { ProductCustomOptionPresetChips } from "@/components/store/product-custom-option-preset-chips";
 
 type OrderType = "always" | "sameDay" | "manual" | "reserveOnly" | "todayOnly";
 
@@ -549,12 +550,20 @@ export function CakeTab() {
               className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700"
             >
               <Plus className="w-3.5 h-3.5" />
-              オプションを追加
+              空のオプションを追加
             </button>
           </div>
 
+          <ProductCustomOptionPresetChips
+            className="mb-3"
+            customOptions={customOptions}
+            onAdd={(opt) => setCustomOptions((prev) => [...prev, opt])}
+          />
+
           {customOptions.length === 0 && (
-            <p className="text-xs text-gray-400">オプションはありません</p>
+            <p className="text-xs text-gray-400">
+              上の定番から追加するか、「空のオプションを追加」で自由に設定できます
+            </p>
           )}
 
           {customOptions.map((opt, oi) => (
