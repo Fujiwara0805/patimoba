@@ -53,12 +53,13 @@ export default function TakeoutConfirmPage() {
     (async () => {
       const { data, error } = await supabase
         .from("users")
-        .select("name, phone")
+        .select("name, name_kana, phone")
         .eq("id", userId)
         .maybeSingle();
       if (cancelled || error || !data) return;
-      if (data.name) {
-        const parts = data.name.split(/\s+/);
+      const source = data.name_kana || data.name || "";
+      if (source) {
+        const parts = source.split(/\s+/);
         setLastName(parts[0] ?? "");
         setFirstName(parts.slice(1).join(" ") ?? "");
       }

@@ -2,11 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Download, Loader2 } from "lucide-react";
+import { User, Download } from "lucide-react";
 import { useOrders, type OrderChannel } from "@/hooks/use-orders";
 import { useStoreContext } from "@/lib/store-context";
-import { useAuth } from "@/lib/auth-context";
-import { useOrderMutations } from "@/hooks/use-order-mutations";
 import type { Order } from "@/lib/types";
 import { OrderDetailModal } from "@/components/store/order-detail-modal";
 import { DatePickerPopup } from "@/components/store/date-picker-popup";
@@ -125,19 +123,17 @@ function downloadCSV(filename: string, csv: string) {
 
 export default function StoreOrderHistoryPage() {
   const { storeId, storeName } = useStoreContext();
-  const { user } = useAuth();
-  const { updateFulfillmentStatus } = useOrderMutations();
 
   const today = new Date();
   const defaultFrom = new Date(today);
-  defaultFrom.setDate(today.getDate() - 30);
+  defaultFrom.setFullYear(today.getFullYear() - 1);
 
   const [fromDate, setFromDate] = useState<Date>(defaultFrom);
   const [toDate, setToDate] = useState<Date>(today);
   const [channel, setChannel] = useState<"" | OrderChannel>("");
   const [fulfillment, setFulfillment] = useState<"" | "pending" | "fulfilled">("");
 
-  const { orders, loading: ordersLoading, refetch } = useOrders({
+  const { orders, loading: ordersLoading } = useOrders({
     storeId,
     from: toISODate(fromDate),
     to: toISODate(toDate, true),
@@ -148,7 +144,6 @@ export default function StoreOrderHistoryPage() {
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [toggleLoading, setToggleLoading] = useState<string | null>(null);
   const fromRef = useRef<HTMLDivElement>(null);
   const toRef = useRef<HTMLDivElement>(null);
 
@@ -173,21 +168,6 @@ export default function StoreOrderHistoryPage() {
     const slug = (storeName || "store").replace(/\s+/g, "_");
     const filename = `orders_${slug}_${yyyymmdd(fromDate)}_${yyyymmdd(toDate)}.csv`;
     downloadCSV(filename, buildCSV(orders));
-  };
-
-  const handleToggleFulfillment = async (order: Order) => {
-    if (toggleLoading) return;
-    setToggleLoading(order.id);
-    try {
-      await updateFulfillmentStatus(
-        order.id,
-        order.fulfillmentStatus !== "fulfilled",
-        user?.id ?? null,
-      );
-      await refetch();
-    } finally {
-      setToggleLoading(null);
-    }
   };
 
   return (
@@ -276,7 +256,7 @@ export default function StoreOrderHistoryPage() {
       </div>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[90px_1fr_1.2fr_1.3fr_1fr_140px] bg-[#FFF176] px-4 py-2.5 text-sm font-bold text-gray-700 items-center">
+        <div className="grid grid-cols-[110px_180px_170px_minmax(260px,2fr)_150px_160px] bg-[#FFF176] px-4 py-3 text-base font-bold text-gray-700 items-center">
           <span>区分</span>
           <span>顧客名</span>
           <span>受取/発送</span>
@@ -297,7 +277,6 @@ export default function StoreOrderHistoryPage() {
           const isEc = order.orderType === "ec";
           const isFulfilled = order.fulfillmentStatus === "fulfilled";
           const fulfilledLabel = isEc ? "出荷済" : "受渡済";
-          const loading = toggleLoading === order.id;
 
           return (
             <motion.div
@@ -305,14 +284,14 @@ export default function StoreOrderHistoryPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: i * 0.02 }}
-              className={`grid grid-cols-[90px_1fr_1.2fr_1.3fr_1fr_140px] px-4 py-3 items-center border-t border-gray-100 cursor-pointer transition-colors ${
+              className={`grid grid-cols-[110px_180px_170px_minmax(260px,2fr)_150px_160px] px-4 py-4 items-center border-t border-gray-100 cursor-pointer transition-colors ${
                 isFulfilled ? "bg-white hover:bg-gray-50" : isEc ? "bg-blue-50 hover:bg-blue-100" : "bg-amber-50/40 hover:bg-amber-50"
               }`}
               onClick={() => setSelectedOrder(order)}
             >
               <div>
                 <span
-                  className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded ${
+                  className={`inline-block text-sm font-bold px-2.5 py-1 rounded ${
                     isEc ? "bg-blue-500 text-white" : "bg-amber-500 text-white"
                   }`}
                 >
@@ -321,18 +300,18 @@ export default function StoreOrderHistoryPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
                   <User className="w-4 h-4 text-gray-500" />
                 </div>
-                <span className="text-sm">{order.customerName || order.lineName || "-"}</span>
+                <span className="text-base">{order.customerName || order.lineName || "-"}</span>
               </div>
 
-              <div className="text-sm text-gray-600">
-                {order.pickupDate && <div>{order.pickupDate}</div>}
+              <div className="text-base text-gray-700">
+                {order.pickupDate && <div className="font-medium">{order.pickupDate}</div>}
                 {order.pickupTime && <div className="text-xs text-gray-500">{order.pickupTime.slice(0, 5)}</div>}
               </div>
 
-              <div className="text-sm">
+              <div className="text-base leading-relaxed">
                 {order.items.map((item, j) => (
                   <div key={j}>
                     {item.name} <span className="text-gray-500">×{item.quantity}</span>
@@ -341,7 +320,7 @@ export default function StoreOrderHistoryPage() {
               </div>
 
               <div>
-                <div className="text-sm font-bold">¥{order.totalAmount.toLocaleString()}</div>
+                <div className="text-base font-bold">¥{order.totalAmount.toLocaleString()}</div>
                 <div
                   className={`text-xs ${
                     order.paymentStatus === "決済済み"
@@ -355,25 +334,18 @@ export default function StoreOrderHistoryPage() {
                 </div>
               </div>
 
-              <div
-                className="flex flex-col items-center gap-1"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleToggleFulfillment(order)}
-                  className={`min-w-[110px] text-xs font-bold px-3 py-2 rounded-lg transition-colors disabled:opacity-60 flex items-center justify-center gap-1 ${
+              <div className="flex flex-col items-center gap-1">
+                <span
+                  className={`min-w-[120px] text-sm font-bold px-3 py-2 rounded-lg text-center ${
                     isFulfilled
-                      ? "bg-green-500 hover:bg-green-600 text-white"
-                      : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                      ? "bg-green-500 text-white"
+                      : "bg-gray-200 text-gray-700"
                   }`}
                 >
-                  {loading && <Loader2 className="w-3 h-3 animate-spin" />}
                   {isFulfilled ? fulfilledLabel : "未提供"}
-                </button>
+                </span>
                 {isFulfilled && order.fulfilledAt && (
-                  <span className="text-[10px] text-gray-500">{formatFulfilledAt(order.fulfilledAt)}</span>
+                  <span className="text-xs text-gray-500">{formatFulfilledAt(order.fulfilledAt)}</span>
                 )}
               </div>
             </motion.div>

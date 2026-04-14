@@ -126,6 +126,9 @@ export type Database = {
           created_at: string
           customer_id: string | null
           discount_amount: number | null
+          fulfilled_at: string | null
+          fulfilled_by: string | null
+          fulfillment_status: string
           id: string
           notes: string | null
           order_no: string | null
@@ -146,6 +149,9 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           discount_amount?: number | null
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          fulfillment_status?: string
           id?: string
           notes?: string | null
           order_no?: string | null
@@ -166,6 +172,9 @@ export type Database = {
           created_at?: string
           customer_id?: string | null
           discount_amount?: number | null
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          fulfillment_status?: string
           id?: string
           notes?: string | null
           order_no?: string | null
@@ -184,6 +193,13 @@ export type Database = {
           {
             foreignKeyName: "orders_customer_id_fkey"
             columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_fulfilled_by_fkey"
+            columns: ["fulfilled_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -623,39 +639,48 @@ export type Database = {
       }
       users: {
         Row: {
+          anniversaries: Json
           auth_user_id: string | null
+          avatar_url: string | null
           created_at: string
           email: string | null
           id: string
           line_name: string | null
           line_user_id: string | null
           name: string
+          name_kana: string | null
           phone: string | null
           status: string
           updated_at: string
           user_type: string
         }
         Insert: {
+          anniversaries?: Json
           auth_user_id?: string | null
+          avatar_url?: string | null
           created_at?: string
           email?: string | null
           id?: string
           line_name?: string | null
           line_user_id?: string | null
           name?: string
+          name_kana?: string | null
           phone?: string | null
           status?: string
           updated_at?: string
           user_type?: string
         }
         Update: {
+          anniversaries?: Json
           auth_user_id?: string | null
+          avatar_url?: string | null
           created_at?: string
           email?: string | null
           id?: string
           line_name?: string | null
           line_user_id?: string | null
           name?: string
+          name_kana?: string | null
           phone?: string | null
           status?: string
           updated_at?: string

@@ -6,6 +6,7 @@ import { useAuth } from "./auth-context"
 interface CustomerProfile {
   lineName: string
   avatar: string | null
+  nameKana: string | null
 }
 
 interface CustomerContextType {
@@ -71,13 +72,14 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
       const { data: userRow } = await supabase
         .from("users")
-        .select("name, line_name")
+        .select("name, line_name, name_kana, avatar_url")
         .eq("id", user.id)
         .maybeSingle()
 
       setProfile({
         lineName: userRow?.line_name || userRow?.name || user.lastName || "ゲスト",
-        avatar: null,
+        avatar: userRow?.avatar_url || null,
+        nameKana: userRow?.name_kana || null,
       })
     }
 

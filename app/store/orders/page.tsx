@@ -140,12 +140,12 @@ export default function StoreOrdersPage() {
       </div>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[1fr_1fr_1.3fr_1.3fr_50px_1fr_130px] bg-[#FFF176] px-4 py-2.5 text-sm font-bold text-gray-700 items-center">
+        <div className="grid grid-cols-[110px_180px_170px_minmax(260px,2fr)_70px_150px_160px] bg-[#FFF176] px-4 py-3 text-base font-bold text-gray-700 items-center">
           <span>区分</span>
           <span>顧客名</span>
           <span>来店/発送</span>
           <span>注文内容</span>
-          <span />
+          <span className="text-center">数量</span>
           <span>合計金額</span>
           <span className="text-center">提供状況</span>
         </div>
@@ -167,13 +167,13 @@ export default function StoreOrdersPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: i * 0.03 }}
-              className={`grid grid-cols-[1fr_1fr_1.3fr_1.3fr_50px_1fr_130px] px-4 py-3 items-center border-t border-gray-100 ${
+              className={`grid grid-cols-[110px_180px_170px_minmax(260px,2fr)_70px_150px_160px] px-4 py-4 items-center border-t border-gray-100 ${
                 isFulfilled ? "bg-white" : isEc ? "bg-blue-50" : "bg-amber-50/40"
               }`}
             >
               <div>
                 <span
-                  className={`inline-block text-xs font-bold px-2 py-0.5 rounded ${
+                  className={`inline-block text-sm font-bold px-2.5 py-1 rounded ${
                     isEc ? "bg-blue-500 text-white" : "bg-amber-500 text-white"
                   }`}
                 >
@@ -182,31 +182,31 @@ export default function StoreOrdersPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
                   <User className="w-4 h-4 text-gray-500" />
                 </div>
-                <span className="text-sm">{order.customerName || "-"}</span>
+                <span className="text-base">{order.customerName || "-"}</span>
               </div>
 
-              <div className="text-sm text-gray-600">
-                {order.pickupTime && <div>{order.pickupTime.slice(0, 5)}</div>}
+              <div className="text-base text-gray-700">
+                {order.pickupTime && <div className="font-medium">{order.pickupTime.slice(0, 5)}</div>}
                 {order.pickupDate && <div className="text-xs text-gray-500">{order.pickupDate}</div>}
               </div>
 
-              <div className="text-sm">
+              <div className="text-base leading-relaxed">
                 {order.items.map((item, j) => (
                   <div key={j}>{item.name}</div>
                 ))}
               </div>
 
-              <div className="text-sm text-gray-500">
+              <div className="text-base text-gray-500 text-center leading-relaxed">
                 {order.items.map((item, j) => (
                   <div key={j}>&times;{item.quantity}</div>
                 ))}
               </div>
 
               <div>
-                <div className="text-sm font-bold">
+                <div className="text-base font-bold">
                   &yen;{order.totalAmount.toLocaleString()}
                 </div>
                 <div
@@ -234,7 +234,7 @@ export default function StoreOrdersPage() {
                       isEc,
                     })
                   }
-                  className={`min-w-[100px] text-xs font-bold px-3 py-2 rounded-lg transition-colors ${
+                  className={`min-w-[120px] text-sm font-bold px-3 py-2 rounded-lg transition-colors ${
                     isFulfilled
                       ? "bg-green-500 hover:bg-green-600 text-white"
                       : "bg-gray-200 hover:bg-gray-300 text-gray-700"
@@ -242,10 +242,13 @@ export default function StoreOrdersPage() {
                 >
                   {isFulfilled ? fulfilledLabel : "未提供"}
                 </motion.button>
-                {isFulfilled && order.fulfilledAt && (
-                  <span className="text-[10px] text-gray-500">
-                    {formatFulfilledAt(order.fulfilledAt)}
-                  </span>
+                {order.fulfilledAt && (
+                  <div className="flex flex-col items-center">
+                    <span className="text-[10px] text-gray-400 leading-none">更新</span>
+                    <span className="text-xs text-gray-700 font-medium tabular-nums">
+                      {formatFulfilledAt(order.fulfilledAt)}
+                    </span>
+                  </div>
                 )}
               </div>
             </motion.div>

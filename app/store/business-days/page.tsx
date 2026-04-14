@@ -22,7 +22,7 @@ import { supabase } from "@/lib/supabase";
 
 export default function BusinessDaysPage() {
   const { storeId, storeName } = useStoreContext();
-  const { businessDays, loading, saveMonth, addBusinessDay, updateBusinessDay, deleteBusinessDay, refetch } = useBusinessDays(storeId);
+  const { businessDays, loading, addBusinessDay, updateBusinessDay } = useBusinessDays(storeId);
 
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -30,8 +30,6 @@ export default function BusinessDaysPage() {
   const [selectedDay, setSelectedDay] = useState(today.getDate());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [schedules, setSchedules] = useState<Record<string, DaySchedule>>({});
-  const [showNextMonthAlert, setShowNextMonthAlert] = useState(true);
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [editDate, setEditDate] = useState<string>("");
   const [editOpen, setEditOpen] = useState("");
@@ -331,40 +329,6 @@ export default function BusinessDaysPage() {
     setSaving(false);
   };
 
-  const handleSubmit = async () => {
-    if (!storeId) return;
-    setSaving(true);
-    try {
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const entries: Array<{
-        date: string
-        isClosed: boolean
-        openTime: string | null
-        closeTime: string | null
-        dailyNote?: string | null
-      }> = [];
-      for (let d = 1; d <= daysInMonth; d++) {
-        const key = formatDateKey(year, month, d);
-        const s = schedules[key];
-        if (s) {
-          entries.push({
-            date: key,
-            isClosed: !s.isOpen,
-            openTime: s.openTime,
-            closeTime: s.closeTime,
-            dailyNote: s.dailyNote?.trim() || null,
-          });
-        }
-      }
-      await saveMonth(storeId, year, month, entries);
-      setShowSubmitConfirm(true);
-      setTimeout(() => setShowSubmitConfirm(false), 2000);
-    } catch (e) {
-      console.error(e);
-    }
-    setSaving(false);
-  };
-
   const getTitle = () => {
     if (viewMode === "month") return `${year}年${month + 1}月`;
     if (viewMode === "week") {
@@ -420,27 +384,16 @@ export default function BusinessDaysPage() {
               </div>
             </div>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleSubmit}
-            disabled={saving}
-            className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-xl transition-colors text-sm mt-1 disabled:opacity-50 flex items-center gap-2"
-          >
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-            {month + 1}月の営業日を提出
-          </motion.button>
-
           <div ref={exportMenuRef} className="relative mt-1">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowExportMenu((v) => !v)}
               disabled={exporting}
-              className="border border-amber-500 text-amber-600 hover:bg-amber-50 font-bold px-4 py-3 rounded-xl transition-colors text-sm disabled:opacity-50 flex items-center gap-2"
+              className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-xl transition-colors text-sm disabled:opacity-50 flex items-center gap-2"
             >
               {exporting && <Loader2 className="w-4 h-4 animate-spin" />}
-              画像で保存
+              {month + 1}月の営業日を提出
             </motion.button>
             <AnimatePresence>
               {showExportMenu && !exporting && (
@@ -638,52 +591,6 @@ export default function BusinessDaysPage() {
         )}
       </AnimatePresence>
 
-      {/* 初回モーダル */}
-      <AnimatePresence>
-        {showNextMonthAlert && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-            onClick={() => setShowNextMonthAlert(false)}
-          >
-            <motion.div
-              initial={{ y: 10 }}
-              animate={{ y: 0 }}
-              className="bg-white rounded-xl px-12 py-8 shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <p className="text-lg font-bold text-center">来月の営業日を確認してください!</p>
-              <div className="flex justify-center mt-4">
-                <button
-                  onClick={() => setShowNextMonthAlert(false)}
-                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-2 rounded-lg transition-colors text-sm"
-                >
-                  OK
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 提出確認 */}
-      <AnimatePresence>
-        {showSubmitConfirm && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-            onClick={() => setShowSubmitConfirm(false)}
-          >
-            <motion.div initial={{ y: 10 }} animate={{ y: 0 }} className="bg-white rounded-xl px-12 py-8 shadow-xl" onClick={(e) => e.stopPropagation()}>
-              <p className="text-lg font-bold text-center">{month + 1}月の予定を提出しました</p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

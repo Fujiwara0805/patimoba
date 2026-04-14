@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Check, Trash2, LogOut } from "lucide-react";
+import { Loader2, Check, Trash2, LogOut, Plus, X, Camera } from "lucide-react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { CustomerHeader } from "@/components/customer/customer-header";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
@@ -26,6 +27,10 @@ export default function CustomerProfilePage() {
 
   const [lastName, setLastName] = useState("");
   const [firstName, setFirstName] = useState("");
+  const [lastNameKana, setLastNameKana] = useState("");
+  const [firstNameKana, setFirstNameKana] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,6 +39,7 @@ export default function CustomerProfilePage() {
   const [birthYear, setBirthYear] = useState("1990年");
   const [birthMonth, setBirthMonth] = useState("1月");
   const [birthDay, setBirthDay] = useState("1日");
+  const [anniversaries, setAnniversaries] = useState<{ label: string; date: string }[]>([]);
 
   const loadProfile = useCallback(async () => {
     if (!user || user.userType !== "customer") {
@@ -60,6 +66,19 @@ export default function CustomerProfilePage() {
     setFirstName(nameParts.slice(1).join(" ") || "");
     setEmail(data.email || "");
     setPhone(data.phone || "");
+    setAvatarUrl(data.avatar_url || null);
+    if (data.name_kana) {
+      const kanaParts = String(data.name_kana).split(/\s+/);
+      setLastNameKana(kanaParts[0] || "");
+      setFirstNameKana(kanaParts.slice(1).join(" ") || "");
+    }
+    if (Array.isArray(data.anniversaries)) {
+      setAnniversaries(
+        data.anniversaries
+          .filter((a: any) => a && typeof a === "object")
+          .map((a: any) => ({ label: String(a.label ?? ""), date: String(a.date ?? "") })),
+      );
+    }
 
     setIsNew(false);
     setLoading(false);
@@ -68,6 +87,42 @@ export default function CustomerProfilePage() {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("画像ファイルを選択してください");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("画像は 5MB 以下にしてください");
+      return;
+    }
+    if (!userId) {
+      setError("プロフィール保存後にアップロードできます");
+      return;
+    }
+    setUploadingAvatar(true);
+    setError(null);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${userId}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+      const url = pub?.publicUrl || null;
+      setAvatarUrl(url);
+      await supabase.from("users").update({ avatar_url: url }).eq("id", userId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "画像のアップロードに失敗しました");
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = "";
+    }
+  };
 
   const handleDelete = async () => {
     if (deleting || !userId) return;
@@ -119,10 +174,19 @@ export default function CustomerProfilePage() {
     try {
       const fullName = [lastName, firstName].filter(Boolean).join(" ");
 
+      const cleanedAnniversaries = anniversaries
+        .map((a) => ({ label: a.label.trim(), date: a.date.trim() }))
+        .filter((a) => a.label && a.date);
+
+      const fullNameKana = [lastNameKana, firstNameKana].filter(Boolean).join(" ");
+
       const payload = {
         name: fullName,
+        name_kana: fullNameKana || null,
         email,
         phone: phone || null,
+        avatar_url: avatarUrl,
+        anniversaries: cleanedAnniversaries,
       };
 
       if (userId) {
@@ -191,12 +255,49 @@ export default function CustomerProfilePage() {
           user?.lastName ||
           "ゲスト"
         }
+        avatarUrl={avatarUrl || undefined}
       />
 
       <div className="px-5 py-6 pb-12">
         <h1 className="text-lg font-bold text-gray-900 mb-6">
           お客様情報のご登録
         </h1>
+
+        <div className="flex flex-col items-center mb-6">
+          <div className="relative w-24 h-24">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="avatar"
+                className="w-24 h-24 rounded-full object-cover border-2 border-amber-300"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-200">
+                <Camera className="w-7 h-7 text-gray-400" />
+              </div>
+            )}
+            <label
+              className={`absolute bottom-0 right-0 bg-amber-400 hover:bg-amber-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow cursor-pointer ${
+                uploadingAvatar ? "opacity-60 pointer-events-none" : ""
+              }`}
+            >
+              {uploadingAvatar ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
+            </label>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            {userId ? "タップで画像を変更（5MBまで）" : "先にアカウントを登録すると画像を設定できます"}
+          </p>
+        </div>
 
         <section className="mb-6">
           <h2 className="text-sm font-bold text-gray-900 mb-4">
@@ -221,24 +322,22 @@ export default function CustomerProfilePage() {
               <label className="block text-xs text-gray-500 mb-1">
                 パスワード {isNew && <span className="text-red-500">*</span>}
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={isNew ? "パスワードを設定" : "変更する場合のみ入力"}
-                className="w-full border-b border-gray-300 pb-2 text-sm focus:outline-none focus:border-amber-400"
+                className="w-full border-b border-gray-300 pb-2 pr-8 text-sm focus:outline-none focus:border-amber-400"
               />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">
                 パスワード確認 {isNew && <span className="text-red-500">*</span>}
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="もう一度入力"
-                className="w-full border-b border-gray-300 pb-2 text-sm focus:outline-none focus:border-amber-400"
+                className="w-full border-b border-gray-300 pb-2 pr-8 text-sm focus:outline-none focus:border-amber-400"
               />
             </div>
           </div>
@@ -269,6 +368,29 @@ export default function CustomerProfilePage() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="花子"
+                className="w-full border-b border-gray-300 pb-2 text-sm focus:outline-none focus:border-amber-400"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">セイ（フリガナ）</label>
+              <input
+                type="text"
+                value={lastNameKana}
+                onChange={(e) => setLastNameKana(e.target.value)}
+                placeholder="ヤマダ"
+                className="w-full border-b border-gray-300 pb-2 text-sm focus:outline-none focus:border-amber-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">メイ（フリガナ）</label>
+              <input
+                type="text"
+                value={firstNameKana}
+                onChange={(e) => setFirstNameKana(e.target.value)}
+                placeholder="ハナコ"
                 className="w-full border-b border-gray-300 pb-2 text-sm focus:outline-none focus:border-amber-400"
               />
             </div>
@@ -335,6 +457,64 @@ export default function CustomerProfilePage() {
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          <div className="mb-5">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs text-gray-500">記念日</label>
+              <button
+                type="button"
+                onClick={() =>
+                  setAnniversaries((prev) => [...prev, { label: "", date: "" }])
+                }
+                className="inline-flex items-center gap-1 text-xs font-bold text-amber-500 hover:text-amber-600"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                追加
+              </button>
+            </div>
+            {anniversaries.length === 0 && (
+              <p className="text-xs text-gray-400 mb-1">
+                結婚記念日・お子様の誕生日などを登録できます
+              </p>
+            )}
+            <div className="space-y-2">
+              {anniversaries.map((a, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={a.label}
+                    onChange={(e) =>
+                      setAnniversaries((prev) =>
+                        prev.map((p, i) => (i === idx ? { ...p, label: e.target.value } : p)),
+                      )
+                    }
+                    placeholder="記念日の名称（例: 結婚記念日）"
+                    className="flex-1 border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                  <input
+                    type="date"
+                    value={a.date}
+                    onChange={(e) =>
+                      setAnniversaries((prev) =>
+                        prev.map((p, i) => (i === idx ? { ...p, date: e.target.value } : p)),
+                      )
+                    }
+                    className="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setAnniversaries((prev) => prev.filter((_, i) => i !== idx))
+                    }
+                    className="p-2 text-gray-400 hover:text-red-500"
+                    aria-label="削除"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
 
