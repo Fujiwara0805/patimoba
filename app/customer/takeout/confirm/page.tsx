@@ -153,7 +153,7 @@ export default function TakeoutConfirmPage() {
 
       <StepProgress currentStep={4} steps={steps} onStepClick={handleStepClick} />
 
-      <div className="px-4 pb-10">
+      <div className="px-4 md:px-8 lg:px-12 pb-10 md:max-w-2xl md:mx-auto">
         <div className="text-center mb-5">
           <h2 className="text-lg font-bold">注文内容の確認</h2>
           <p className="text-xs text-gray-400 mt-0.5">

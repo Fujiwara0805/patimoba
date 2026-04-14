@@ -123,8 +123,8 @@ export default function TakeoutStorePage() {
       />
       <StepProgress currentStep={1} steps={steps} />
 
-      <div className="px-4">
-        <div className="flex border-b border-gray-200">
+      <div className="px-4 md:px-8 lg:px-12">
+        <div className="flex border-b border-gray-200 md:max-w-md">
           {tabs.map((tab) => (
             <button
               key={tab}
@@ -145,7 +145,7 @@ export default function TakeoutStorePage() {
         </div>
       </div>
 
-      <div className="px-4 pt-4 pb-8 flex-1">
+      <div className="px-4 md:px-8 lg:px-12 pt-4 pb-8 flex-1">
         <AnimatePresence mode="wait">
           {activeTab === "店舗一覧" && (
             <motion.div
@@ -155,7 +155,7 @@ export default function TakeoutStorePage() {
               exit={{ opacity: 0, x: 10 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-4 md:max-w-md">
                 <input
                   type="text"
                   placeholder="店舗名を検索"
@@ -178,7 +178,7 @@ export default function TakeoutStorePage() {
                   店舗が見つかりませんでした
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
                   {filteredStores.map((store, i) => (
                     <motion.div
                       key={store.id}
@@ -207,7 +207,7 @@ export default function TakeoutStorePage() {
               exit={{ opacity: 0, x: 10 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="flex gap-2 mb-4">
+              <div className="flex gap-2 mb-4 md:max-w-md">
                 <input
                   type="text"
                   placeholder="店舗名を検索"
@@ -234,7 +234,7 @@ export default function TakeoutStorePage() {
                   </p>
                 </motion.div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
                   {favoriteStores.map((store, i) => (
                     <motion.div
                       key={store.id}
@@ -276,7 +276,7 @@ export default function TakeoutStorePage() {
                   </p>
                 </motion.div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
                   {viewedStores.map((store, i) => (
                     <motion.div
                       key={store.id}

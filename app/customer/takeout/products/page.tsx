@@ -146,7 +146,7 @@ export default function TakeoutProductsPage() {
 
       <StepProgress currentStep={2} steps={steps} onStepClick={handleStepClick} />
 
-      <div className="px-4 pb-8 flex-1">
+      <div className="px-4 md:px-8 lg:px-12 pb-8 flex-1">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold text-gray-900">商品一覧</h2>
@@ -214,7 +214,7 @@ export default function TakeoutProductsPage() {
             商品が見つかりませんでした
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
             {visibleWholeCakes.map((cake, i) => (
               <motion.div
                 key={`wc-${cake.id}`}

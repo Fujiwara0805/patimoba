@@ -34,7 +34,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
       .from("orders")
       .select(`
         *,
-        users(id, name, line_name, phone, email),
+        users:users!orders_customer_id_fkey(id, name, line_name, phone, email),
         order_items(id, product_name_snapshot, quantity, unit_price, subtotal, product_id)
       `)
       .order("created_at", { ascending: false })

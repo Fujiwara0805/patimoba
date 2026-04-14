@@ -87,10 +87,10 @@ export default function TakeoutPickupPage() {
 
       <StepProgress currentStep={3} steps={steps} />
 
-      <div className="px-4 pb-8">
+      <div className="px-4 md:px-8 lg:px-12 pb-8 md:max-w-2xl md:mx-auto">
         <h2 className="text-lg font-bold mb-4">受け取り日時を選択</h2>
 
-        <div className="border border-gray-200 rounded-xl p-4 mb-4">
+        <div className="border border-gray-200 rounded-xl p-4 md:p-6 mb-4">
           <div className="text-center text-sm font-bold mb-3">
             {currentYear}年{currentMonth + 1}月
           </div>
@@ -144,7 +144,7 @@ export default function TakeoutPickupPage() {
           <select
             value={selectedTime}
             onChange={(e) => setSelectedTime(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent appearance-none"
+            className="w-full md:max-w-xs border border-gray-300 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent appearance-none"
             style={{
               backgroundImage:
                 "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%239ca3af' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E\")",
@@ -165,7 +165,7 @@ export default function TakeoutPickupPage() {
           whileTap={{ scale: 0.98 }}
           onClick={() => router.push("/customer/takeout/confirm")}
           disabled={!selectedDate}
-          className="w-full bg-amber-400 hover:bg-amber-500 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3.5 rounded-full text-base transition-colors"
+          className="w-full md:max-w-md md:mx-auto md:block bg-amber-400 hover:bg-amber-500 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3.5 rounded-full text-base transition-colors"
         >
           注文内容の確認へ
         </motion.button>

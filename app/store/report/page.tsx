@@ -76,7 +76,7 @@ export default function StoreReportPage() {
     (async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, total_amount, created_at, customer_id, order_type, users(name, line_name), order_items(product_name_snapshot, quantity, subtotal)")
+        .select("id, total_amount, created_at, customer_id, order_type, users:users!orders_customer_id_fkey(name, line_name), order_items(product_name_snapshot, quantity, subtotal)")
         .eq("store_id", storeId)
         .gte("created_at", start)
         .lt("created_at", end)
