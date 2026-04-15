@@ -12,7 +12,7 @@ export default function StoreLayout({
     <StoreProvider>
       <div className="flex min-h-screen bg-white">
         <StoreSidebar />
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto store-scope">{children}</main>
       </div>
     </StoreProvider>
   );

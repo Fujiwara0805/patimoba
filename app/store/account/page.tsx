@@ -413,7 +413,7 @@ export default function StoreAccountPage() {
             <p className="text-sm text-gray-500 mb-2">通常の営業時間</p>
             <div className="flex items-center gap-3">
               <span className="text-xl font-semibold">
-                {openTime} ～ {closeTime}
+                {(openTime || "").slice(0, 5)}~{(closeTime || "").slice(0, 5)}
               </span>
               <motion.button
                 type="button"

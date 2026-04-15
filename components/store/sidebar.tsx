@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -37,9 +36,8 @@ export function StoreSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
-  const { storeName, storeImage, storeLogo } = useStoreContext();
+  const { storeName } = useStoreContext();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const logoSrc = storeLogo || storeImage;
 
   const handleLogout = () => {
     logout();
@@ -47,20 +45,11 @@ export function StoreSidebar() {
   };
 
   return (
-    <aside className="w-[180px] min-h-screen border-r border-gray-200 bg-white flex flex-col shrink-0">
-      <Link href="/store/dashboard" className="flex items-center justify-center px-4 py-4">
-        {logoSrc ? (
-          <Image
-            src={logoSrc}
-            alt={storeName || "店舗ロゴ"}
-            width={140}
-            height={48}
-            className="object-contain max-h-12 w-auto"
-            unoptimized
-          />
-        ) : (
-          <span className="text-sm font-bold text-amber-600">{storeName || "パティモバ"}</span>
-        )}
+    <aside className="w-[200px] min-h-screen border-r border-gray-200 bg-white flex flex-col shrink-0">
+      <Link href="/store/dashboard" className="flex items-center justify-center px-4 py-5 border-b border-gray-100">
+        <span className="text-lg font-bold text-amber-600 text-center break-words leading-tight">
+          {storeName || "パティモバ"}
+        </span>
       </Link>
 
       <nav className="flex flex-col flex-1">
@@ -71,7 +60,7 @@ export function StoreSidebar() {
               <div key={item.href}>
                 <Link href={item.href} className="relative">
                   <motion.div
-                    className={`px-5 py-3 text-sm transition-colors relative ${
+                    className={`px-5 py-3 text-base transition-colors relative ${
                       isActive
                         ? "font-bold text-amber-700 bg-amber-50"
                         : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -98,7 +87,7 @@ export function StoreSidebar() {
                       return (
                         <Link key={child.href} href={child.href}>
                           <div
-                            className={`px-8 py-1.5 text-xs transition-colors ${
+                            className={`px-8 py-2 text-sm transition-colors ${
                               childActive
                                 ? "font-bold text-amber-700 bg-amber-100"
                                 : "text-gray-600 hover:text-gray-900 hover:bg-amber-100/60"
@@ -123,7 +112,7 @@ export function StoreSidebar() {
             return (
               <Link key={item.href} href={item.href}>
                 <motion.div
-                  className={`px-5 py-3 text-sm transition-colors ${
+                  className={`px-5 py-3 text-base transition-colors ${
                     isActive
                       ? "font-bold text-gray-900 bg-gray-50"
                       : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -141,7 +130,7 @@ export function StoreSidebar() {
             onClick={() => setShowLogoutConfirm(true)}
           >
             <motion.div
-              className="px-5 py-3 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors text-left"
+              className="px-5 py-3 text-base text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors text-left"
               whileHover={{ x: 2 }}
               transition={{ duration: 0.15 }}
             >

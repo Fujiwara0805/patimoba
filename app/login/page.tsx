@@ -15,6 +15,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useAuth, type UserType } from "@/lib/auth-context";
+import { PasswordInput } from "@/components/ui/password-input";
 
 type Role = "store" | "admin" | "customer" | null;
 
@@ -245,11 +246,10 @@ export default function LoginPage() {
                   </div>
 
                   <div>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent transition-all"
+                      className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-transparent transition-all"
                       placeholder="パスワードを入力"
                       required
                     />

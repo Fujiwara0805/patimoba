@@ -140,7 +140,7 @@ export default function StoreOrdersPage() {
       </div>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[110px_180px_170px_minmax(260px,2fr)_70px_150px_160px] bg-[#FFF176] px-4 py-3 text-base font-bold text-gray-700 items-center">
+        <div className="grid grid-cols-[140px_180px_170px_minmax(260px,2fr)_70px_150px_160px] bg-[#FFF176] px-4 py-3 text-base font-bold text-gray-700 items-center">
           <span>区分</span>
           <span>顧客名</span>
           <span>来店/発送</span>
@@ -167,7 +167,7 @@ export default function StoreOrdersPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: i * 0.03 }}
-              className={`grid grid-cols-[110px_180px_170px_minmax(260px,2fr)_70px_150px_160px] px-4 py-4 items-center border-t border-gray-100 ${
+              className={`grid grid-cols-[140px_180px_170px_minmax(260px,2fr)_70px_150px_160px] px-4 py-4 items-center border-t border-gray-100 ${
                 isFulfilled ? "bg-white" : isEc ? "bg-blue-50" : "bg-amber-50/40"
               }`}
             >

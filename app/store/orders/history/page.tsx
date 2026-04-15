@@ -256,7 +256,7 @@ export default function StoreOrderHistoryPage() {
       </div>
 
       <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[110px_180px_170px_minmax(260px,2fr)_150px_160px] bg-[#FFF176] px-4 py-3 text-base font-bold text-gray-700 items-center">
+        <div className="grid grid-cols-[140px_180px_170px_minmax(260px,2fr)_150px_160px] bg-[#FFF176] px-4 py-3 text-base font-bold text-gray-700 items-center">
           <span>区分</span>
           <span>顧客名</span>
           <span>受取/発送</span>
@@ -284,7 +284,7 @@ export default function StoreOrderHistoryPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: i * 0.02 }}
-              className={`grid grid-cols-[110px_180px_170px_minmax(260px,2fr)_150px_160px] px-4 py-4 items-center border-t border-gray-100 cursor-pointer transition-colors ${
+              className={`grid grid-cols-[140px_180px_170px_minmax(260px,2fr)_150px_160px] px-4 py-4 items-center border-t border-gray-100 cursor-pointer transition-colors ${
                 isFulfilled ? "bg-white hover:bg-gray-50" : isEc ? "bg-blue-50 hover:bg-blue-100" : "bg-amber-50/40 hover:bg-amber-50"
               }`}
               onClick={() => setSelectedOrder(order)}
