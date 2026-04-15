@@ -42,11 +42,12 @@ function groupByMonth<T extends { created_at: string | null }>(
   monthsBack: number
 ) {
   const now = new Date();
-  const buckets: { month: string; count: number }[] = [];
+  const buckets: { key: string; month: string; count: number }[] = [];
 
   for (let i = monthsBack - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     buckets.push({
+      key: `${d.getFullYear()}-${d.getMonth() + 1}`,
       month: `${d.getMonth() + 1}月`,
       count: 0,
     });
@@ -71,7 +72,7 @@ function cumulativeStoreGrowth(stores: Store[], monthsBack: number) {
   const result = [...monthly].reverse().map((m) => {
     const val = cum;
     cum -= m.count;
-    return { month: m.month, value: Math.max(val, 0) };
+    return { key: m.key, month: m.month, value: Math.max(val, 0) };
   });
   return result.reverse();
 }
@@ -80,6 +81,7 @@ function monthlyMRR(stores: Store[], monthsBack: number) {
   const growth = cumulativeStoreGrowth(stores, monthsBack);
   const avgMRR = 58000;
   return growth.map((g) => ({
+    key: g.key,
     month: g.month,
     value: Math.round((g.value * avgMRR) / 10000),
   }));
@@ -139,6 +141,7 @@ export default function AdminDashboardPage() {
   const storeGrowth = cumulativeStoreGrowth(stores, 6);
   const mrrTrend = monthlyMRR(stores, 6);
   const monthlyOrderData = groupByMonth(orders, 6).map((m) => ({
+    key: m.key,
     month: m.month,
     value: m.count,
   }));
@@ -214,6 +217,7 @@ export default function AdminDashboardPage() {
   ];
 
   const churnData = storeGrowth.map((g, i) => ({
+    key: g.key,
     month: g.month,
     value:
       g.value > 0
@@ -326,7 +330,7 @@ export default function AdminDashboardPage() {
             <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={storeGrowth}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <XAxis dataKey="key" tickFormatter={(v: string) => `${Number(v.split("-")[1])}月`} tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Area type="monotone" dataKey="value" stroke="#F59E0B" fill="#FEF3C7" strokeWidth={2} />
@@ -338,7 +342,7 @@ export default function AdminDashboardPage() {
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={mrrTrend}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <XAxis dataKey="key" tickFormatter={(v: string) => `${Number(v.split("-")[1])}月`} tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Line type="monotone" dataKey="value" stroke="#F59E0B" strokeWidth={2} dot={{ fill: "#F59E0B", r: 4 }} />
@@ -350,7 +354,7 @@ export default function AdminDashboardPage() {
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={monthlyOrderData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <XAxis dataKey="key" tickFormatter={(v: string) => `${Number(v.split("-")[1])}月`} tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Bar dataKey="value" fill="#F59E0B" radius={[4, 4, 0, 0]} />
@@ -362,7 +366,7 @@ export default function AdminDashboardPage() {
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={churnData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <XAxis dataKey="key" tickFormatter={(v: string) => `${Number(v.split("-")[1])}月`} tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} domain={[0, "auto"]} />
                 <Tooltip />
                 <Line type="monotone" dataKey="value" stroke="#EF4444" strokeWidth={2} dot={{ fill: "#EF4444", r: 4 }} />

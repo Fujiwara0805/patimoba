@@ -1,4 +1,6 @@
 import type { Database } from "./database.types"
+import type { StorePlanSlug } from "./store-plans"
+import { normalizeStorePlan } from "./store-plans"
 
 // 新スキーマは text カラムベースなので enum は定義しない（代わりに union type）
 export type OrderStatus = "new" | "pending" | "confirmed" | "preparing" | "ready" | "completed" | "cancelled"
@@ -99,7 +101,7 @@ export interface Customer {
   status: string
 }
 
-export type StorePlan = "free" | "premium"
+export type StorePlan = StorePlanSlug
 
 export interface Store {
   id: string
@@ -220,7 +222,7 @@ export function toUIStore(row: StoreRow): Store {
     isActive: row.is_active ?? true,
     logoUrl: row.logo_url,
     lineOfficialAccountId: row.line_official_account_id,
-    plan: (row.plan === "premium" ? "premium" : "free") as StorePlan,
+    plan: normalizeStorePlan(row.plan),
   }
 }
 

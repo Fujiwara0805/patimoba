@@ -18,16 +18,16 @@ import {
   Check,
 } from "lucide-react";
 import { fetchStores, deleteStore, type Store } from "@/lib/admin-api";
+import { mrrYenForStorePlan, normalizeStorePlan } from "@/lib/store-plans";
 
 const PLAN_LABELS: Record<string, string> = {
-  basic: "ベーシック",
+  light: "ライト",
   standard: "スタンダード",
   premium: "プレミアム",
 };
 
 function planLabel(plan: string | null) {
-  if (!plan) return "ベーシック";
-  return PLAN_LABELS[plan] ?? "ベーシック";
+  return PLAN_LABELS[normalizeStorePlan(plan)] ?? PLAN_LABELS.light;
 }
 
 function PlanBadge({ plan }: { plan: string | null }) {
@@ -57,15 +57,9 @@ function StatusBadge({ active }: { active: boolean }) {
   );
 }
 
-function mrrFromPlan(plan: string | null) {
-  if (plan === "premium") return 150000;
-  if (plan === "standard") return 98000;
-  return 58000;
-}
-
 type FilterState = {
   status: "all" | "active" | "risk";
-  plan: "all" | "basic" | "standard" | "premium";
+  plan: "all" | "light" | "standard" | "premium";
 };
 
 export default function AdminStoresPage() {
@@ -136,6 +130,7 @@ export default function AdminStoresPage() {
   const filteredStores = stores.filter((s) => {
     if (filter.status === "active" && s.is_active === false) return false;
     if (filter.status === "risk" && s.is_active !== false) return false;
+    if (filter.plan !== "all" && normalizeStorePlan(s.plan) !== filter.plan) return false;
     return true;
   });
 
@@ -246,7 +241,7 @@ export default function AdminStoresPage() {
                     <div className="flex gap-2 flex-wrap">
                       {([
                         { val: "all", label: "すべて" },
-                        { val: "basic", label: "ベーシック" },
+                        { val: "light", label: "ライト" },
                         { val: "standard", label: "スタンダード" },
                         { val: "premium", label: "プレミアム" },
                       ] as const).map((opt) => (
@@ -311,7 +306,7 @@ export default function AdminStoresPage() {
         ) : (
           <div className="space-y-3">
             {filteredStores.map((store, i) => {
-              const mrr = 0;
+              const mrr = mrrYenForStorePlan(store.plan);
               const isActive = store.is_active !== false;
               return (
                 <motion.div

@@ -6,8 +6,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Upload, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { fetchStoreById, updateStore, uploadStoreLogo, fetchClosedDays, saveClosedDays } from "@/lib/admin-api";
-
-const PLAN_MAP: Record<string, "free" | "premium"> = { free: "free", premium: "premium" };
+import type { StorePlanSlug } from "@/lib/store-plans";
+import { normalizeStorePlan } from "@/lib/store-plans";
+import { StorePlanPicker } from "@/components/admin/store-plan-picker";
 
 const daysOfWeek = [
   { key: "mon", label: "月" },
@@ -23,17 +24,6 @@ const hours = Array.from({ length: 24 }, (_, i) => {
   const h = i.toString().padStart(2, "0");
   return [`${h}:00`, `${h}:30`];
 }).flat();
-
-const freeFeatures = ["予約・注文管理", "顧客管理", "売上レポート"];
-const premiumFeatures = [
-  "スタンダードの全機能",
-  "記念日通知",
-  "月次レポート（詳細版）",
-  "カスタマイズケーキ機能",
-  "焼き菓子EC機能",
-  "配達機能",
-  "優先サポート",
-];
 
 export default function AdminStoreEditPage() {
   const router = useRouter();
@@ -52,7 +42,7 @@ export default function AdminStoreEditPage() {
   const [openTime, setOpenTime] = useState("10:00");
   const [closeTime, setCloseTime] = useState("19:00");
   const [closedDays, setClosedDays] = useState<string[]>([]);
-  const [selectedPlan, setSelectedPlan] = useState<"free" | "premium">("free");
+  const [selectedPlan, setSelectedPlan] = useState<StorePlanSlug>("light");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [existingLogo, setExistingLogo] = useState<string | null>(null);
@@ -69,7 +59,7 @@ export default function AdminStoreEditPage() {
         setExistingLogo(store.logo_url);
         setLogoPreview(store.logo_url);
       }
-      setSelectedPlan(PLAN_MAP[(store as any).plan ?? "free"] ?? "free");
+      setSelectedPlan(normalizeStorePlan((store as { plan?: string | null }).plan));
       try {
         const days = await fetchClosedDays(storeId);
         setClosedDays(days);
@@ -271,50 +261,7 @@ export default function AdminStoreEditPage() {
         </Section>
 
         <Section title="ご利用プラン">
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => setSelectedPlan("free")}
-              className={`text-left border-2 rounded-xl p-5 transition-all ${
-                selectedPlan === "free"
-                  ? "border-amber-500 bg-amber-50/40 shadow-sm"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <p className="font-bold text-base mb-1">フリー</p>
-              <p className="text-xl font-bold mb-3">
-                月額 0<span className="text-base">円</span>
-              </p>
-              <ul className="space-y-1.5">
-                {freeFeatures.map((f) => (
-                  <li key={f} className="text-xs text-gray-600">・{f}</li>
-                ))}
-              </ul>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedPlan("premium")}
-              className={`text-left border-2 rounded-xl p-5 transition-all relative ${
-                selectedPlan === "premium"
-                  ? "border-amber-500 bg-amber-50/40 shadow-sm"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                おすすめ
-              </span>
-              <p className="font-bold text-base mb-1 text-amber-700">プレミアム</p>
-              <p className="text-xl font-bold mb-3">
-                月額 15,000<span className="text-base">円</span>
-              </p>
-              <ul className="space-y-1.5">
-                {premiumFeatures.map((f) => (
-                  <li key={f} className="text-xs text-gray-600">・{f}</li>
-                ))}
-              </ul>
-            </button>
-          </div>
+          <StorePlanPicker value={selectedPlan} onChange={setSelectedPlan} />
         </Section>
 
         {error && (
