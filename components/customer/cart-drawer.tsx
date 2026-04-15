@@ -14,12 +14,16 @@ function itemCartKey(item: UICartItem): string {
     .map((cd) => `${cd.candleOptionId}x${cd.quantity}`)
     .join("|");
   const optionKey = (c.options || []).map((op) => op.wholeCakeOptionId).join("|");
+  const customOptKey = (c.customOptions || [])
+    .map((o) => `${o.name}=${(o.values || []).join(",")}`)
+    .join("|");
   return [
     item.productId,
     c.sizeId || "",
     candleKey,
     optionKey,
     c.messagePlate || "",
+    customOptKey,
   ].join(":");
 }
 
@@ -117,9 +121,13 @@ export function CartDrawer({
                         (s, op) => s + op.price,
                         0
                       );
+                      const customOptSum = (c?.customOptions || []).reduce(
+                        (s, o) => s + (o.additionalPrice || 0),
+                        0
+                      );
                       const itemTotal =
                         item.price * item.quantity +
-                        ((c?.sizePrice || 0) + candleSum + optionSum) * item.quantity;
+                        ((c?.sizePrice || 0) + candleSum + optionSum + customOptSum) * item.quantity;
                       const key = itemCartKey(item);
 
                       return (
@@ -172,6 +180,12 @@ export function CartDrawer({
                                     プレート: 「{c.messagePlate}」
                                   </p>
                                 )}
+                                {(c.customOptions || []).map((o, i) => (
+                                  <p key={`co-${i}`} className="text-xs text-gray-500">
+                                    {o.name}:{" "}
+                                    {(o.values || []).join("、") || "（未入力）"}
+                                  </p>
+                                ))}
                               </div>
                             )}
 

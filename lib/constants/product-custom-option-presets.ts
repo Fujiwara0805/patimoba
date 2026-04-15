@@ -49,7 +49,7 @@ export const PRODUCT_CUSTOM_OPTION_PRESET_METAS: ProductCustomOptionPresetMeta[]
   },
   {
     id: "message",
-    label: "メッセージ",
+    label: "メッセージプレート（入力フォーム）",
     defaultGroupName: "メッセージプレート",
     create: () => ({
       name: "メッセージプレート",

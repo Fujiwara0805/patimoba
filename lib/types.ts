@@ -167,6 +167,11 @@ export interface UICartItem {
     options?: CartCakeOptionEntry[]
     messagePlate?: string
     allergyNote?: string
+    customOptions?: {
+      name: string
+      values: string[]
+      additionalPrice: number
+    }[]
   }
 }
 

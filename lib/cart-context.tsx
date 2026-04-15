@@ -62,12 +62,16 @@ function cartItemKey(item: UICartItem): string {
     .map((cd) => `${cd.candleOptionId}x${cd.quantity}`)
     .join("|")
   const optionKey = (c.options || []).map((op) => op.wholeCakeOptionId).join("|")
+  const customOptKey = (c.customOptions || [])
+    .map((o) => `${o.name}=${(o.values || []).join(",")}`)
+    .join("|")
   return [
     item.productId,
     c.sizeId || "",
     candleKey,
     optionKey,
     c.messagePlate || "",
+    customOptKey,
   ].join(":")
 }
 
@@ -180,7 +184,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         0
       )
       const optionTotal = (c.options || []).reduce((s, op) => s + op.price, 0)
-      itemTotal += (candleTotal + optionTotal) * item.quantity
+      const customOptTotal = (c.customOptions || []).reduce(
+        (s, o) => s + (o.additionalPrice || 0),
+        0
+      )
+      itemTotal += (candleTotal + optionTotal + customOptTotal) * item.quantity
     }
     return sum + itemTotal
   }, 0)

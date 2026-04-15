@@ -414,6 +414,14 @@ export function ProductDetailPanel({
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
+                {opt.type === "text" && (
+                  <textarea
+                    disabled
+                    rows={2}
+                    placeholder="（お客様が入力するフォームのプレビュー）"
+                    className="w-full border border-gray-200 bg-gray-50 rounded px-2 py-1 text-xs resize-none text-gray-400"
+                  />
+                )}
                 {opt.type !== "text" && (
                   <div className="space-y-1">
                     {opt.values.map((v, vi) => (

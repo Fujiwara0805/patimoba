@@ -724,9 +724,17 @@ export function CakeTab() {
                 )}
 
                 {opt.type === "text" && (
-                  <p className="text-xs text-gray-500">
-                    購入者がメッセージを自由に入力できます（例: メッセージプレート、アレルギー）
-                  </p>
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-gray-500">
+                      購入者がメッセージを自由に入力できます（例: メッセージプレート、アレルギー）
+                    </p>
+                    <textarea
+                      disabled
+                      rows={2}
+                      placeholder="（お客様が入力するフォームのプレビュー）"
+                      className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm resize-none text-gray-400"
+                    />
+                  </div>
                 )}
               </div>
             );
