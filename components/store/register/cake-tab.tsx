@@ -8,9 +8,9 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { useProductTypes } from "@/hooks/use-product-types";
 import { useProductCategories } from "@/hooks/use-product-categories";
-import { CANDLE_OPTIONS } from "@/lib/constants/product-master";
 import { uploadProductImage, deleteProductImage } from "@/lib/upload-image";
 import { ProductCustomOptionPresetChips } from "@/components/store/product-custom-option-preset-chips";
+import { PRODUCT_CUSTOM_OPTION_PRESET_METAS } from "@/lib/constants/product-custom-option-presets";
 
 type OrderType = "always" | "sameDay" | "manual" | "reserveOnly" | "todayOnly";
 
@@ -33,19 +33,6 @@ interface ProductRow {
   daily_max_quantity: number | null;
   preparation_days: number | null;
   custom_options: any;
-}
-
-interface CandleRow {
-  id: string;
-  name: string;
-  price: number;
-}
-
-interface OptionRow {
-  id: string;
-  name: string;
-  price: number;
-  multiple_allowed: boolean;
 }
 
 function resolveOrderType(row: ProductRow): OrderType {
@@ -91,18 +78,19 @@ export function CakeTab() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // ホールケーキ用カスタム情報
-  const candles: CandleRow[] = CANDLE_OPTIONS.map((c) => ({
-    id: c.id,
-    name: c.name,
-    price: c.price,
-  }));
-  const [options, setOptions] = useState<OptionRow[]>([]);
-  const [selectedCandleId, setSelectedCandleId] = useState<string>("");
-  const [selectedOptionIds, setSelectedOptionIds] = useState<Set<string>>(new Set());
-  const [messagePlate, setMessagePlate] = useState("");
-
   const isHole = category === "ホール";
+
+  // ホールカテゴリ選択時、未登録ならカスタムオプションにホール用プリセットを自動投入
+  useEffect(() => {
+    if (!isHole || selectedId) return;
+    setCustomOptions((prev) => {
+      if (prev.length > 0) return prev;
+      const ids = ["size", "candles", "message"] as const;
+      return PRODUCT_CUSTOM_OPTION_PRESET_METAS
+        .filter((m) => ids.includes(m.id as any))
+        .map((m) => m.create());
+    });
+  }, [isHole, selectedId]);
 
   const fetchProducts = useCallback(async () => {
     if (!storeId) {
@@ -116,8 +104,6 @@ export function CakeTab() {
       .eq("store_id", storeId)
       .order("display_order", { ascending: true });
     setProducts((data ?? []) as ProductRow[]);
-    // オプションは現在使用しないため空にする
-    setOptions([]);
     setLoading(false);
   }, [storeId]);
 
@@ -141,9 +127,6 @@ export function CakeTab() {
     setCustomOptions([]);
     setMainImage(null);
     setCrossImage(null);
-    setSelectedCandleId("");
-    setSelectedOptionIds(new Set());
-    setMessagePlate("");
     setError(null);
   }, []);
 
@@ -166,9 +149,6 @@ export function CakeTab() {
       setCustomOptions(Array.isArray(p.custom_options) ? (p.custom_options as ProductCustomOption[]) : []);
       setMainImage(p.image ?? null);
       setCrossImage(p.cross_section_image ?? null);
-      setSelectedCandleId("");
-      setSelectedOptionIds(new Set());
-      setMessagePlate("");
       setError(null);
     },
     [products, productTypes]
@@ -202,15 +182,6 @@ export function CakeTab() {
 
   const parsePriceValue = (v: string): number =>
     parseInt(v.replace(/[¥,\s]/g, ""), 10) || 0;
-
-  const toggleOption = (id: string) => {
-    setSelectedOptionIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
 
   const handleSave = async () => {
     setError(null);
@@ -536,9 +507,9 @@ export function CakeTab() {
         </div>
 
         {/* カスタムオプション */}
-        <div className="border border-amber-200 rounded-lg p-3 bg-white/60 space-y-3">
+        <div className="border border-amber-200 rounded-xl p-4 bg-amber-50/40 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-bold">カスタムオプション</span>
+            <span className="text-base font-bold text-amber-800">カスタムオプション</span>
             <button
               type="button"
               onClick={() =>
@@ -547,160 +518,219 @@ export function CakeTab() {
                   { name: "", type: "single", required: false, values: [] },
                 ])
               }
-              className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700"
+              className="flex items-center gap-1 text-sm text-amber-700 hover:text-amber-800 font-medium"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4" />
               空のオプションを追加
             </button>
           </div>
 
           <ProductCustomOptionPresetChips
-            className="mb-3"
             customOptions={customOptions}
             onAdd={(opt) => setCustomOptions((prev) => [...prev, opt])}
           />
 
           {customOptions.length === 0 && (
-            <p className="text-xs text-gray-400">
+            <p className="text-sm text-gray-500">
               上の定番から追加するか、「空のオプションを追加」で自由に設定できます
             </p>
           )}
 
-          {customOptions.map((opt, oi) => (
-            <div key={oi} className="border border-gray-200 rounded-lg p-2.5 bg-white space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={opt.name}
-                  onChange={(e) =>
-                    setCustomOptions((prev) =>
-                      prev.map((o, i) => (i === oi ? { ...o, name: e.target.value } : o))
-                    )
-                  }
-                  placeholder="オプション名 (例: サイズ)"
-                  className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm"
-                />
-                <select
-                  value={opt.type}
-                  onChange={(e) =>
-                    setCustomOptions((prev) =>
-                      prev.map((o, i) =>
-                        i === oi ? { ...o, type: e.target.value as ProductCustomOption["type"] } : o
-                      )
-                    )
-                  }
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
-                >
-                  <option value="single">単一選択</option>
-                  <option value="multiple">複数選択</option>
-                  <option value="text">自由入力</option>
-                </select>
-                <label className="flex items-center gap-1 text-xs">
+          {customOptions.map((opt, oi) => {
+            const typeLabels = {
+              single: "単一選択",
+              multiple: "複数選択",
+              text: "自由入力",
+            } as const;
+            const typeList: ProductCustomOption["type"][] = ["single", "multiple", "text"];
+            return (
+              <div
+                key={oi}
+                className="border border-amber-200 rounded-xl p-4 bg-white space-y-3 shadow-sm"
+              >
+                <div className="flex items-start gap-2">
                   <input
-                    type="checkbox"
-                    checked={opt.required}
+                    type="text"
+                    value={opt.name}
                     onChange={(e) =>
                       setCustomOptions((prev) =>
-                        prev.map((o, i) => (i === oi ? { ...o, required: e.target.checked } : o))
+                        prev.map((o, i) => (i === oi ? { ...o, name: e.target.value } : o))
                       )
                     }
+                    placeholder="オプション名（例: サイズ、ろうそく）"
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-amber-300 focus:border-transparent"
                   />
-                  必須
-                </label>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCustomOptions((prev) => prev.filter((_, i) => i !== oi))
-                  }
-                  className="text-red-500 hover:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCustomOptions((prev) => prev.filter((_, i) => i !== oi))
+                    }
+                    className="p-2 rounded-lg text-red-500 hover:bg-red-50"
+                    aria-label="このオプションを削除"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
 
-              {opt.type !== "text" && (
-                <div className="pl-2 space-y-1.5">
-                  {opt.values.map((v, vi) => (
-                    <div key={vi} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={v.label}
-                        onChange={(e) =>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-gray-500">入力形式</span>
+                  {typeList.map((t) => {
+                    const active = opt.type === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() =>
                           setCustomOptions((prev) =>
                             prev.map((o, i) =>
                               i === oi
                                 ? {
                                     ...o,
-                                    values: o.values.map((vv, vj) =>
-                                      vj === vi ? { ...vv, label: e.target.value } : vv
-                                    ),
+                                    type: t,
+                                    values: t === "text" ? [] : o.values,
                                   }
                                 : o
                             )
                           )
                         }
-                        placeholder="選択肢"
-                        className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs"
-                      />
-                      <input
-                        type="number"
-                        value={v.additional_price}
-                        onChange={(e) =>
-                          setCustomOptions((prev) =>
-                            prev.map((o, i) =>
-                              i === oi
-                                ? {
-                                    ...o,
-                                    values: o.values.map((vv, vj) =>
-                                      vj === vi
-                                        ? { ...vv, additional_price: parseInt(e.target.value, 10) || 0 }
-                                        : vv
-                                    ),
-                                  }
-                                : o
-                            )
+                        className={`px-3 py-1.5 rounded-full text-sm border transition-all ${
+                          active
+                            ? "bg-amber-500 text-white border-amber-500"
+                            : "bg-white text-gray-600 border-gray-300 hover:border-amber-400"
+                        }`}
+                      >
+                        {typeLabels[t]}
+                      </button>
+                    );
+                  })}
+                  <label className="flex items-center gap-1.5 text-sm ml-auto cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={opt.required}
+                      onChange={(e) =>
+                        setCustomOptions((prev) =>
+                          prev.map((o, i) =>
+                            i === oi ? { ...o, required: e.target.checked } : o
                           )
-                        }
-                        placeholder="+¥0"
-                        className="w-24 border border-gray-300 rounded px-2 py-1 text-xs"
-                      />
+                        )
+                      }
+                      className="w-4 h-4 accent-amber-500"
+                    />
+                    必須
+                  </label>
+                </div>
+
+                {opt.type !== "text" && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 block">選択肢</label>
+                    <div className="flex flex-wrap gap-2">
+                      {opt.values.map((v, vi) => (
+                        <div
+                          key={vi}
+                          className="inline-flex items-center gap-1 bg-amber-50 border border-amber-300 rounded-full pl-3 pr-1 py-1"
+                        >
+                          <input
+                            type="text"
+                            value={v.label}
+                            onChange={(e) =>
+                              setCustomOptions((prev) =>
+                                prev.map((o, i) =>
+                                  i === oi
+                                    ? {
+                                        ...o,
+                                        values: o.values.map((vv, vj) =>
+                                          vj === vi ? { ...vv, label: e.target.value } : vv
+                                        ),
+                                      }
+                                    : o
+                                )
+                              )
+                            }
+                            placeholder="選択肢名"
+                            className="bg-transparent outline-none text-sm font-medium w-28"
+                          />
+                          <span className="text-xs text-gray-500">+¥</span>
+                          <input
+                            type="number"
+                            value={v.additional_price}
+                            onChange={(e) =>
+                              setCustomOptions((prev) =>
+                                prev.map((o, i) =>
+                                  i === oi
+                                    ? {
+                                        ...o,
+                                        values: o.values.map((vv, vj) =>
+                                          vj === vi
+                                            ? {
+                                                ...vv,
+                                                additional_price:
+                                                  parseInt(e.target.value, 10) || 0,
+                                              }
+                                            : vv
+                                        ),
+                                      }
+                                    : o
+                                )
+                              )
+                            }
+                            placeholder="0"
+                            className="bg-transparent outline-none text-sm w-14 text-right"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCustomOptions((prev) =>
+                                prev.map((o, i) =>
+                                  i === oi
+                                    ? {
+                                        ...o,
+                                        values: o.values.filter((_, vj) => vj !== vi),
+                                      }
+                                    : o
+                                )
+                              )
+                            }
+                            className="w-6 h-6 rounded-full bg-white/70 hover:bg-red-100 text-red-500 flex items-center justify-center"
+                            aria-label="選択肢を削除"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
                       <button
                         type="button"
                         onClick={() =>
                           setCustomOptions((prev) =>
                             prev.map((o, i) =>
                               i === oi
-                                ? { ...o, values: o.values.filter((_, vj) => vj !== vi) }
+                                ? {
+                                    ...o,
+                                    values: [
+                                      ...o.values,
+                                      { label: "", additional_price: 0 },
+                                    ],
+                                  }
                                 : o
                             )
                           )
                         }
-                        className="text-red-500 hover:text-red-600"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-dashed border-amber-400 text-sm text-amber-700 hover:bg-amber-50"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <Plus className="w-3.5 h-3.5" />
+                        選択肢を追加
                       </button>
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCustomOptions((prev) =>
-                        prev.map((o, i) =>
-                          i === oi
-                            ? { ...o, values: [...o.values, { label: "", additional_price: 0 }] }
-                            : o
-                        )
-                      )
-                    }
-                    className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700"
-                  >
-                    <Plus className="w-3 h-3" />
-                    選択肢を追加
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+                  </div>
+                )}
+
+                {opt.type === "text" && (
+                  <p className="text-xs text-gray-500">
+                    購入者がメッセージを自由に入力できます（例: メッセージプレート、アレルギー）
+                  </p>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* 注文タイプ */}
@@ -751,101 +781,6 @@ export function CakeTab() {
           />
           期間限定
         </label>
-
-        {/* ホール選択時のカスタム情報 */}
-        <AnimatePresence>
-          {isHole && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="border-t border-amber-300 pt-4 mt-2 space-y-4">
-                <h3 className="text-sm font-bold text-amber-700">
-                  ホールケーキ カスタム情報
-                </h3>
-
-                {/* ろうそく選択 */}
-                <div>
-                  <label className="text-sm font-medium block mb-2">ろうそく</label>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCandleId("")}
-                      className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
-                        selectedCandleId === ""
-                          ? "bg-amber-500 text-white border-amber-500"
-                          : "bg-white text-gray-600 border-gray-300 hover:border-amber-400"
-                      }`}
-                    >
-                      なし
-                    </button>
-                    {candles.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => setSelectedCandleId(c.id)}
-                        className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
-                          selectedCandleId === c.id
-                            ? "bg-amber-500 text-white border-amber-500"
-                            : "bg-white text-gray-600 border-gray-300 hover:border-amber-400"
-                        }`}
-                      >
-                        {c.name}
-                        {c.price > 0 && (
-                          <span className="ml-1 text-xs opacity-75">
-                            +¥{c.price}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* オプション選択 */}
-                <div>
-                  <label className="text-sm font-medium block mb-2">オプション</label>
-                  <div className="flex flex-wrap gap-2">
-                    {options.map((o) => (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() => toggleOption(o.id)}
-                        className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
-                          selectedOptionIds.has(o.id)
-                            ? "bg-amber-500 text-white border-amber-500"
-                            : "bg-white text-gray-600 border-gray-300 hover:border-amber-400"
-                        }`}
-                      >
-                        {o.name}
-                        {o.price > 0 && (
-                          <span className="ml-1 text-xs opacity-75">
-                            +¥{o.price.toLocaleString()}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* メッセージプレート */}
-                <div>
-                  <label className="text-sm font-medium block mb-1">
-                    メッセージプレート
-                  </label>
-                  <input
-                    type="text"
-                    value={messagePlate}
-                    onChange={(e) => setMessagePlate(e.target.value)}
-                    placeholder="例: お誕生日おめでとう"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-300"
-                  />
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         <AnimatePresence>
           {error && (
